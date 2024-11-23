@@ -13,3 +13,48 @@ git clone https:www.github.com/JoachimBose/engineswap
 cd ../..
 
 ```
+
+## Functions used by Fillseq,readrandom
+* NewDirectory
+* NewLogger
+* NewRandomAccessFile
+* NewSequentialFile
+* NewWritableFile
+* NumFileLinks
+* OptimizeForCompactionTableRead
+* OptimizeForCompactionTableWrite
+* OptimizeForLogWrite
+* OptimizeForManifestRead
+* OptimizeForManifestWrite
+* LockFile
+* GetAbsolutePath
+* GetChildren
+* GetFileSize
+* GetTestDirectory
+* FileExists
+* DeleteDir
+* DeleteFile
+* CreateDirIfMissing
+* RenameFile
+* SupportedOps
+* UnlockFile
+
+
+
+## DB_bench options to keep in mind
+See https://github.com/stonet-research/storage-systems-wiki-reading-list/wiki/RocksDB-notes
+for more info
+* -async_io default: false
+* -histogram show hist
+* -num number of kv pairs
+* -key_size
+* -value_size
+* -io_uring_enabled 
+* -keyrange_dist_X where x is a parameter
+* -perf_level
+* -report_file
+(If true, enable the use of IO uring if the platform supports it) type: bool default: true
+
+## Benchmarks:
+* fillseq
+* updaterandom
