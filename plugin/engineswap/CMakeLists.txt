@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.4)
 
-set(engineswap_SOURCES "engineswap.cc" PARENT_SCOPE)
+set(engineswap_SOURCES "engineswap.cc aioengine.cc iouengine.cc posixengine.cc filedummies.cc" PARENT_SCOPE)
 set(engineswap_INCLUDE_PATHS "${LIBCRYPTO_HOME}/include" PARENT_SCOPE)
 set(engineswap_LINK_PATHS "${LIBCRYPTO_HOME}/lib" PARENT_SCOPE)
 if(MSVC)
