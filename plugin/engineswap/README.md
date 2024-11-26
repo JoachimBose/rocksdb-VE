@@ -22,7 +22,7 @@ cd ../..
 * NewWritableFile
 * NumFileLinks
 * OptimizeForCompactionTableRead
-* OptimizeForCompactionTableWrite
+* OptimizeForCompactionTableWritea
 * OptimizeForLogWrite
 * OptimizeForManifestRead
 * OptimizeForManifestWrite

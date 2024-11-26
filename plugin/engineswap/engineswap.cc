@@ -65,7 +65,7 @@ class EngineSwapFileSystem : public FileSystemWrapper {
     NewSequentialFileStub = NewSequentialFile##x;
     //set up which fs to use
     if(nengine_type.compare(URI_POSIX) == 0){
-      //setEngineType(Posix);
+      setEngineType(Posix);
     }
     else if (nengine_type.compare(URI_IOU) == 0){
       //setEngineType(Iou)
