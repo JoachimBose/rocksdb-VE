@@ -227,6 +227,262 @@ class SequentialFileDummy : public FSSequentialFileWrapper {
   }
 };
 
+class FileSystemDummy : public FileSystemWrapper{
+   public:
+  // Initialize an EnvWrapper that delegates all calls to *t
+  explicit FileSystemDummy(const std::shared_ptr<FileSystem>& t) : FileSystemWrapper(t){
+
+  }
+  ~FileSystemDummy() override {}
+
+  const char* Name() const override { return "FileSystemDummy"; }
+
+  // Return the target to which this Env forwards all calls
+
+  // The following text is boilerplate that forwards all methods to target()
+  IOStatus NewSequentialFile(const std::string& f, const FileOptions& file_opts,
+                             std::unique_ptr<FSSequentialFile>* r,
+                             IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::NewSequentialFile\n";
+    return FileSystemWrapper::NewSequentialFile(f, file_opts, r, dbg);
+  }
+  IOStatus NewRandomAccessFile(const std::string& f,
+                               const FileOptions& file_opts,
+                               std::unique_ptr<FSRandomAccessFile>* r,
+                               IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::NewRandomAccessFile\n";
+    return FileSystemWrapper::NewRandomAccessFile(f, file_opts, r, dbg);
+  }
+  IOStatus NewWritableFile(const std::string& f, const FileOptions& file_opts,
+                           std::unique_ptr<FSWritableFile>* r,
+                           IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::NewWritableFile\n";
+    return FileSystemWrapper::NewWritableFile(f, file_opts, r, dbg);
+  }
+  IOStatus ReopenWritableFile(const std::string& fname,
+                              const FileOptions& file_opts,
+                              std::unique_ptr<FSWritableFile>* result,
+                              IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::ReopenWritableFile\n";
+    return FileSystemWrapper::ReopenWritableFile(fname, file_opts, result, dbg);
+  }
+  IOStatus ReuseWritableFile(const std::string& fname,
+                             const std::string& old_fname,
+                             const FileOptions& file_opts,
+                             std::unique_ptr<FSWritableFile>* r,
+                             IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::ReuseWritableFile\n";
+    return FileSystemWrapper::ReuseWritableFile(fname, old_fname, file_opts, r, dbg);
+  }
+  IOStatus NewRandomRWFile(const std::string& fname,
+                           const FileOptions& file_opts,
+                           std::unique_ptr<FSRandomRWFile>* result,
+                           IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::NewRandomRWFile\n";
+    return FileSystemWrapper::NewRandomRWFile(fname, file_opts, result, dbg);
+  }
+  IOStatus NewMemoryMappedFileBuffer(
+      const std::string& fname,
+      std::unique_ptr<MemoryMappedFileBuffer>* result) override {
+    std::cout << "FileSystemDummy::NewMemoryMappedFileBuffer\n";
+    return FileSystemWrapper::NewMemoryMappedFileBuffer(fname, result);
+  }
+  IOStatus NewDirectory(const std::string& name, const IOOptions& io_opts,
+                        std::unique_ptr<FSDirectory>* result,
+                        IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::NewDirectory\n";
+    return FileSystemWrapper::NewDirectory(name, io_opts, result, dbg);
+  }
+  IOStatus FileExists(const std::string& f, const IOOptions& io_opts,
+                      IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::FileExists\n";
+    return FileSystemWrapper::FileExists(f, io_opts, dbg);
+  }
+  IOStatus GetChildren(const std::string& dir, const IOOptions& io_opts,
+                       std::vector<std::string>* r,
+                       IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::GetChildren\n";
+    return FileSystemWrapper::GetChildren(dir, io_opts, r, dbg);
+  }
+  IOStatus GetChildrenFileAttributes(const std::string& dir,
+                                     const IOOptions& options,
+                                     std::vector<FileAttributes>* result,
+                                     IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::GetChildrenFileAttributes\n";
+    return FileSystemWrapper::GetChildrenFileAttributes(dir, options, result, dbg);
+  }
+  IOStatus DeleteFile(const std::string& f, const IOOptions& options,
+                      IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::DeleteFile\n";
+    return FileSystemWrapper::DeleteFile(f, options, dbg);
+  }
+  IOStatus Truncate(const std::string& fname, size_t size,
+                    const IOOptions& options, IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::Truncate\n";
+    return FileSystemWrapper::Truncate(fname, size, options, dbg);
+  }
+  IOStatus CreateDir(const std::string& d, const IOOptions& options,
+                     IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::CreateDir\n";
+    return FileSystemWrapper::CreateDir(d, options, dbg);
+  }
+  IOStatus CreateDirIfMissing(const std::string& d, const IOOptions& options,
+                              IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::CreateDirIfMissing\n";
+    return FileSystemWrapper::CreateDirIfMissing(d, options, dbg);
+  }
+  IOStatus DeleteDir(const std::string& d, const IOOptions& options,
+                     IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::DeleteDir\n";
+    return FileSystemWrapper::DeleteDir(d, options, dbg);
+  }
+  IOStatus GetFileSize(const std::string& f, const IOOptions& options,
+                       uint64_t* s, IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::GetFileSize\n";
+    return FileSystemWrapper::GetFileSize(f, options, s, dbg);
+  }
+
+  IOStatus GetFileModificationTime(const std::string& fname,
+                                   const IOOptions& options,
+                                   uint64_t* file_mtime,
+                                   IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::GetFileModificationTime\n";
+    return FileSystemWrapper::GetFileModificationTime(fname, options, file_mtime, dbg);
+  }
+
+  IOStatus GetAbsolutePath(const std::string& db_path, const IOOptions& options,
+                           std::string* output_path,
+                           IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::GetAbsolutePath\n";
+    return FileSystemWrapper::GetAbsolutePath(db_path, options, output_path, dbg);
+  }
+
+  IOStatus RenameFile(const std::string& s, const std::string& t,
+                      const IOOptions& options, IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::RenameFile\n";
+    return FileSystemWrapper::RenameFile(s, t, options, dbg);
+  }
+
+  IOStatus LinkFile(const std::string& s, const std::string& t,
+                    const IOOptions& options, IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::LinkFile\n";
+    return FileSystemWrapper::LinkFile(s, t, options, dbg);
+  }
+
+  IOStatus NumFileLinks(const std::string& fname, const IOOptions& options,
+                        uint64_t* count, IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::NumFileLinks\n";
+    return FileSystemWrapper::NumFileLinks(fname, options, count, dbg);
+  }
+
+  IOStatus AreFilesSame(const std::string& first, const std::string& second,
+                        const IOOptions& options, bool* res,
+                        IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::AreFilesSame\n";
+    return FileSystemWrapper::AreFilesSame(first, second, options, res, dbg);
+  }
+
+  IOStatus LockFile(const std::string& f, const IOOptions& options,
+                    FileLock** l, IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::LockFile\n";
+    return FileSystemWrapper::LockFile(f, options, l, dbg);
+  }
+
+  IOStatus UnlockFile(FileLock* l, const IOOptions& options,
+                      IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::UnlockFile\n";
+    return FileSystemWrapper::UnlockFile(l, options, dbg);
+  }
+
+  IOStatus GetTestDirectory(const IOOptions& options, std::string* path,
+                            IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::GetTestDirectory\n";
+    return FileSystemWrapper::GetTestDirectory(options, path, dbg);
+  }
+  IOStatus NewLogger(const std::string& fname, const IOOptions& options,
+                     std::shared_ptr<Logger>* result,
+                     IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::NewLogger\n";
+    return FileSystemWrapper::NewLogger(fname, options, result, dbg);
+  }
+
+  void SanitizeFileOptions(FileOptions* opts) const override {
+std::cout << "FileSystemDummy::SanitizeFileOptions\n";
+    FileSystemWrapper::SanitizeFileOptions(opts);
+  }
+
+  FileOptions OptimizeForLogRead(
+      const FileOptions& file_options) const override {
+    std::cout << "FileSystemDummy::OptimizeForLogRead\n";
+    return FileSystemWrapper::OptimizeForLogRead(file_options);
+  }
+  FileOptions OptimizeForManifestRead(
+      const FileOptions& file_options) const override {
+    std::cout << "FileSystemDummy::OptimizeForManifestRead\n";
+    return FileSystemWrapper::OptimizeForManifestRead(file_options);
+  }
+  FileOptions OptimizeForLogWrite(const FileOptions& file_options,
+                                  const DBOptions& db_options) const override {
+    std::cout << "FileSystemDummy::OptimizeForLogWrite\n";
+    return FileSystemWrapper::OptimizeForLogWrite(file_options, db_options);
+  }
+  FileOptions OptimizeForManifestWrite(
+      const FileOptions& file_options) const override {
+    std::cout << "FileSystemDummy::OptimizeForManifestWrite\n";
+    return FileSystemWrapper::OptimizeForManifestWrite(file_options);
+  }
+  FileOptions OptimizeForCompactionTableWrite(
+      const FileOptions& file_options,
+      const ImmutableDBOptions& immutable_ops) const override {
+    std::cout << "FileSystemDummy::OptimizeForCompactionTableWrite\n";
+    return FileSystemWrapper::OptimizeForCompactionTableWrite(file_options,
+                                                    immutable_ops);
+  }
+  FileOptions OptimizeForCompactionTableRead(
+      const FileOptions& file_options,
+      const ImmutableDBOptions& db_options) const override {
+    std::cout << "FileSystemDummy::OptimizeForCompactionTableRead\n";
+    return FileSystemWrapper::OptimizeForCompactionTableRead(file_options, db_options);
+  }
+  FileOptions OptimizeForBlobFileRead(
+      const FileOptions& file_options,
+      const ImmutableDBOptions& db_options) const override {
+    std::cout << "FileSystemDummy::OptimizeForBlobFileRead\n";
+    return FileSystemWrapper::OptimizeForBlobFileRead(file_options, db_options);
+  }
+  IOStatus GetFreeSpace(const std::string& path, const IOOptions& options,
+                        uint64_t* diskfree, IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::GetFreeSpace\n";
+    return FileSystemWrapper::GetFreeSpace(path, options, diskfree, dbg);
+  }
+  IOStatus IsDirectory(const std::string& path, const IOOptions& options,
+                       bool* is_dir, IODebugContext* dbg) override {
+    std::cout << "FileSystemDummy::IsDirectory\n";
+    return FileSystemWrapper::IsDirectory(path, options, is_dir, dbg);
+  }
+
+  IOStatus Poll(std::vector<void*>& io_handles,
+                size_t min_completions) override {
+    std::cout << "FileSystemDummy::Poll\n";
+    return FileSystemWrapper::Poll(io_handles, min_completions);
+  }
+
+  IOStatus AbortIO(std::vector<void*>& io_handles) override {
+    std::cout << "FileSystemDummy::AbortIO\n";
+    return FileSystemWrapper::AbortIO(io_handles);
+  }
+
+  void DiscardCacheForDirectory(const std::string& path) override {
+std::cout << "FileSystemDummy::DiscardCacheForDirectory\n";
+    FileSystemWrapper::DiscardCacheForDirectory(path);
+  }
+
+  void SupportedOps(int64_t& supported_ops) override {
+    std::cout << "FileSystemDummy::SupportedOps\n";
+    return FileSystemWrapper::SupportedOps(supported_ops);
+  }
+};
+
 //#endregion
 }
 #endif

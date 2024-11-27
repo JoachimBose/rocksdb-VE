@@ -65,7 +65,7 @@ class EngineSwapFileSystem : public FileSystemWrapper {
     NewSequentialFileStub = NewSequentialFile##x;
     //set up which fs to use
     if(nengine_type.compare(URI_POSIX) == 0){
-      //setEngineType(Posix);
+      setEngineType(Posix);
     }
     else if (nengine_type.compare(URI_IOU) == 0){
       //setEngineType(Iou)
@@ -126,6 +126,7 @@ class EngineSwapFileSystem : public FileSystemWrapper {
                            IODebugContext* dbg) override {
     std::cout << "creating new writeable file\n";
     if(engine_type.compare(URI_DUMMY) != 0){
+      std::cout << "calling the stub \n";
       return NewWritableFileStub(f, file_opts, r, dbg);
     }
     else{
@@ -147,7 +148,7 @@ class EngineSwapFileSystem : public FileSystemWrapper {
 std::unique_ptr<FileSystem>
 NewEngineSwapFileSystem(std::string engine_type) {
   std::unique_ptr<FileSystem> fs = std::unique_ptr<FileSystem>(
-    new EngineSwapFileSystem(FileSystem::Default(), engine_type));
+    new FileSystemDummy(std::unique_ptr<FileSystem>(new EngineSwapFileSystem(FileSystem::Default(), engine_type))));
     std::cout << "creating new engine with type: " << engine_type << "\n";
   return fs;
 
