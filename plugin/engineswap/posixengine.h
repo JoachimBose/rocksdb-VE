@@ -179,7 +179,7 @@ class WritableFilePosix : public FSWritableFile {
 
   // Use the returned alignment value to allocate
   // aligned buffer for Direct I/O
-  size_t GetRequiredBufferAlignment() const { return logical_sector_size; }
+  size_t GetRequiredBufferAlignment() const ;
 
   void SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) { write_hint_ = hint; }
 
@@ -192,9 +192,7 @@ class WritableFilePosix : public FSWritableFile {
   uint64_t GetFileSize(const IOOptions& /*options*/,
                        IODebugContext* /*dbg*/);
 
-  void SetPreallocationBlockSize(size_t size) {
-    FSWritableFile::SetPreallocationBlockSize(size);
-  }
+  void SetPreallocationBlockSize(size_t size) ;
 
   void GetPreallocationStatus(size_t* block_size,
                               size_t* last_allocated_block) {
@@ -207,9 +205,7 @@ class WritableFilePosix : public FSWritableFile {
     return IOStatus::NotSupported("InvalidateCache not supported.");
   }
   IOStatus RangeSync(uint64_t /*offset*/, uint64_t /*nbytes*/,
-                     const IOOptions& options, IODebugContext* dbg) {
-    return FSWritableFile::RangeSync(0, 0, options, dbg);
-  }
+                     const IOOptions& options, IODebugContext* dbg);
   void PrepareWrite(size_t offset, size_t len, const IOOptions& options,
                     IODebugContext* dbg) {
     FSWritableFile::PrepareWrite(offset, len, options, dbg);
