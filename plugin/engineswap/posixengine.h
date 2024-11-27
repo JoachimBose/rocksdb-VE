@@ -124,6 +124,7 @@ class WritableFilePosix : public FSWritableFile {
   FILE* file;
   int fd;
   size_t logical_sector_size;
+  size_t filesize;
 
  public:
   WritableFilePosix(const std::string& fname, FILE* nfile, int nfd,
@@ -132,6 +133,7 @@ class WritableFilePosix : public FSWritableFile {
         file = nfile;
         fd = nfd;
         logical_sector_size = nlogical_block_size;
+        filesize = 0;
     }
 
   inline ~WritableFilePosix() {}
