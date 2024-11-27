@@ -38,7 +38,7 @@ class WritableFileDummy : public FSWritableFileWrapper {
                             const IOOptions& options,
                             const DataVerificationInfo& verification_info,
                             IODebugContext* dbg) override {
-    std::cout << "WritableFileDummy::PositionedAppend \n";
+    std::cout << "WritableFileDummy::PositionedAppend2 \n";
     return FSWritableFileWrapper::PositionedAppend(data, offset, options, verification_info,
                                      dbg);
   }
@@ -120,7 +120,7 @@ class WritableFileDummy : public FSWritableFileWrapper {
 
   void PrepareWrite(size_t offset, size_t len, const IOOptions& options,
                     IODebugContext* dbg) override {
-    std::cout << "WritableFileDummy::RangeSync \n";
+    std::cout << "WritableFileDummy::PrepareWrite \n";
     FSWritableFileWrapper::PrepareWrite(offset, len, options, dbg);
   }
 
@@ -161,7 +161,10 @@ class RandomAccessFileDummy : public FSRandomAccessFileWrapper {
     std::cout << "RandomAccessFileDummy::GetUniqueId \n";
     return FSRandomAccessFileWrapper::GetUniqueId(id, max_size);
   }
-  void Hint(AccessPattern pattern) override { FSRandomAccessFileWrapper::Hint(pattern); }
+  void Hint(AccessPattern pattern) override { 
+    std::cout << "RandomAccessFileDummy::Hint\n"
+    FSRandomAccessFileWrapper::Hint(pattern);
+  }
   bool use_direct_io() const override { 
     std::cout << "RandomAccessFileDummy::use_direct_io \n";
     return FSRandomAccessFileWrapper::use_direct_io(); }
@@ -177,8 +180,8 @@ class RandomAccessFileDummy : public FSRandomAccessFileWrapper {
                      std::function<void(FSReadRequest&, void*)> cb,
                      void* cb_arg, void** io_handle, IOHandleDeleter* del_fn,
                      IODebugContext* dbg) override {
-    std::cout << "-> \n";
-    return target()->ReadAsync(req, opts, cb, cb_arg, io_handle, del_fn, dbg);
+    std::cout << "RandomAccessFileDummy::ReadAsync \n";
+    return FSRandomAccessFileWrapper::ReadAsync(req, opts, cb, cb_arg, del_fn, dbg);
   }
   Temperature GetTemperature() const override {
     std::cout << "RandomAccessFileDummy::GetTemperature \n";
@@ -198,7 +201,7 @@ class SequentialFileDummy : public FSSequentialFileWrapper {
 
   IOStatus Read(size_t n, const IOOptions& options, Slice* result,
                 char* scratch, IODebugContext* dbg) override {
-    std::cout << "SequentialFilSequentialFileDummy::eDummy::Read \n";
+    std::cout << "SequentialFileDummy::Read \n";
     return FSSequentialFileWrapper::Read(n, options, result, scratch, dbg);
   }
   IOStatus Skip(uint64_t n) override { 
