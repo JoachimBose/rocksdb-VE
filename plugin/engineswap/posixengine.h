@@ -4,6 +4,7 @@
 #include "rocksdb/file_system.h"
 #include "rocksdb/io_status.h"
 #include "env/io_posix.h"
+#include "rocksdb/env.h"
 namespace ROCKSDB_NAMESPACE {
 
 IOStatus NewRandomAccessFilePosix(const std::string& f,
