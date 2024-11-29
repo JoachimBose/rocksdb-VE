@@ -50,6 +50,8 @@ class WritableFileIou : public PosixWritableFile {
   {
 
   }
+  IOStatus Append(const Slice& data, const IOOptions& /*opts*/,
+                                   IODebugContext* /*dbg*/) override;
 };
 
 }

@@ -242,5 +242,21 @@ namespace rocksdb{
     // WritableFileDummy::SetWriteLifeTimeHint 
     // WritableFileDummy::Sync 
     // WritableFileDummy::use_direct_io 
+    IOStatus WritableFileIou::Append(const Slice& data, const IOOptions& /*opts*/,
+                                   IODebugContext* /*dbg*/) {
+        if (use_direct_io()) {
+            assert(IsSectorAligned(data.size(), GetRequiredBufferAlignment()));
+            assert(IsSectorAligned(data.data(), GetRequiredBufferAlignment()));
+        }
+        const char* src = data.data();
+        size_t nbytes = data.size();
+
+        if (!PosixWrite(PosixWritableFile::fd_, src, nbytes)) {
+            return IOError("While appending to file", PosixWritableFile::filename_, errno);
+        }
+
+        PosixWritableFile::filesize_ += nbytes;
+        return IOStatus::OK();
+    }
 }
 
