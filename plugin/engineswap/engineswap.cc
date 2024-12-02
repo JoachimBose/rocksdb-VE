@@ -1,10 +1,4 @@
 #include "engineswap.h"
-#include "iouengine.h"
-#include "posixengine.h"
-#include "filedummies.h"
-
-#include "rocksdb/file_system.h"
-#include "rocksdb/utilities/object_registry.h"
 
 #include <iostream>
 #include <string>
@@ -35,27 +29,18 @@ FactoryFunc<FileSystem> engineswap_reg =
         });
 
 
-class EngineSwapFileSystem : public FileSystemWrapper {
- private:
 
-  IOStatus (*NewRandomAccessFileStub)(const std::string& f, 
-                             const FileOptions& file_opts,
-                             std::unique_ptr<FSRandomAccessFile>* r,
-                             IODebugContext* dbg);
-
-  IOStatus (*NewSequentialFileStub)(const std::string& f, 
-                            const FileOptions& file_opts,
-                            std::unique_ptr<FSSequentialFile>* r,
-                            IODebugContext* dbg);
-
-  IOStatus (*NewWritableFileStub)(const std::string& f, 
-                            const FileOptions& file_opts,
-                            std::unique_ptr<FSWritableFile>* r,
-                            IODebugContext* dbg);
-  std::string engine_type;
-
- public:
-  EngineSwapFileSystem(std::shared_ptr<FileSystem> t, std::string nengine_type) : FileSystemWrapper(t) {
+ 
+  std::unique_ptr<IouRing>* EngineSwapFileSystem::getRing(){
+    if (ring.get() == nullptr)
+    {
+      ring.reset(new IouRing());
+    }
+    
+    return &ring;
+  }
+  
+  EngineSwapFileSystem::EngineSwapFileSystem(std::shared_ptr<FileSystem> t, std::string nengine_type) : FileSystemWrapper(t) {
       
     engine_type = nengine_type;
     
@@ -68,8 +53,8 @@ class EngineSwapFileSystem : public FileSystemWrapper {
       setEngineType(Posix);
     }
     else if (nengine_type.compare(URI_IOU) == 0){
-      //setEngineType(Iou)
-      std::cout << "Selected api is io_uring but is not yet implemented :(\n";
+      setEngineType(Iou)
+      // std::cout << "Selected api is io_uring but is not yet implemented :(\n";
     }
     else if (nengine_type.compare(URI_AIO) == 0){
       //setEngineType(Aio)
@@ -81,11 +66,11 @@ class EngineSwapFileSystem : public FileSystemWrapper {
     #undef setEngineType
   }
 
-  const char* Name() const override { return "EngineFileSystem"; }
+  const char* EngineSwapFileSystem::Name() const { return "EngineFileSystem"; }
   
-  IOStatus NewSequentialFile(const std::string& f, const FileOptions& file_opts,
+  IOStatus EngineSwapFileSystem::NewSequentialFile(const std::string& f, const FileOptions& file_opts,
                              std::unique_ptr<FSSequentialFile>* r,
-                             IODebugContext* dbg) override {
+                             IODebugContext* dbg) {
     
     std::cout << "creating new sequential file\n";
     if(engine_type.compare(URI_DUMMY) != 0){
@@ -101,10 +86,10 @@ class EngineSwapFileSystem : public FileSystemWrapper {
       return s;
     }
   }
-  IOStatus NewRandomAccessFile(const std::string& f,
+  IOStatus EngineSwapFileSystem::NewRandomAccessFile(const std::string& f,
                                const FileOptions& file_opts,
                                std::unique_ptr<FSRandomAccessFile>* r,
-                               IODebugContext* dbg) override {
+                               IODebugContext* dbg) {
     
     std::cout << "creating new randomaccess file\n";
     if(engine_type.compare(URI_DUMMY) != 0){
@@ -120,10 +105,10 @@ class EngineSwapFileSystem : public FileSystemWrapper {
       return s;
     }
   }
-  IOStatus NewWritableFile(const std::string& f,
+  IOStatus EngineSwapFileSystem::NewWritableFile(const std::string& f,
                            const FileOptions& file_opts,
                            std::unique_ptr<FSWritableFile>* r,
-                           IODebugContext* dbg) override {
+                           IODebugContext* dbg) {
     std::cout << "creating new writeable file\n";
     if(engine_type.compare(URI_DUMMY) != 0){
       std::cout << "calling the stub \n";
@@ -143,7 +128,6 @@ class EngineSwapFileSystem : public FileSystemWrapper {
       return s;
     }
   }
-  };
 
 std::unique_ptr<FileSystem>
 NewEngineSwapFileSystem(std::string engine_type) {
