@@ -5,6 +5,7 @@
 #include "rocksdb/io_status.h"
 #include "env/io_posix.h"
 #include "rocksdb/env.h"
+#include "util/thread_local.h"
 namespace ROCKSDB_NAMESPACE {
 
 IOStatus NewRandomAccessFilePosix(const std::string& f,
@@ -26,7 +27,12 @@ class RandomAccessFilePosix : public PosixRandomAccessFile {
  public:
   RandomAccessFilePosix(const std::string& fname, int nfd,
                         size_t nlogical_block_size, const EnvOptions& noptions) :
-                        PosixRandomAccessFile(fname, nfd, nlogical_block_size, noptions)
+                        PosixRandomAccessFile(fname, nfd, nlogical_block_size, noptions
+#if defined(ROCKSDB_IOURING_PRESENT)
+                        ,
+                        nullptr
+#endif
+  )
   {
 
   }

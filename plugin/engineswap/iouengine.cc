@@ -102,36 +102,36 @@ namespace rocksdb{
         // appends data to the end of the file, regardless of the value of
         // offset.
         // More info here: https://linux.die.net/man/2/pwrite
-        flags |= O_WRONLY;
-    #if !defined(OS_MACOSX) && !defined(OS_OPENBSD) && !defined(OS_SOLARIS)
-        flags |= O_DIRECT;
+            flags |= O_WRONLY;
+        #if !defined(OS_MACOSX) && !defined(OS_OPENBSD) && !defined(OS_SOLARIS)
+            flags |= O_DIRECT;
     #endif
         TEST_SYNC_POINT_CALLBACK("NewWritableFile:O_DIRECT", &flags);
         } else if (options.use_mmap_writes) {
         // non-direct I/O
-        flags |= O_RDWR;
+            flags |= O_RDWR;
         } else {
-        flags |= O_WRONLY;
+            flags |= O_WRONLY;
         }
 
         flags = cloexec_flags(flags, &options);
 
         do {
         // IOSTATS_TIMER_GUARD(open_nanos);
-        fd = open(fname.c_str(), flags, 0644);
+            fd = open(fname.c_str(), flags, 0644);
         } while (fd < 0 && errno == EINTR);
 
         if (fd < 0) {
-        s = IOError("While open a file for appending", fname, errno);
-        return s;
+            s = IOError("While open a file for appending", fname, errno);
+            return s;
         }
         SetFD_CLOEXEC(fd, &options);
 
         if (options.use_mmap_writes) {
-        MaybeForceDisableMmap(fd);
+            MaybeForceDisableMmap(fd);
         }
         if (options.use_mmap_writes && !false) {
-        result->reset(new PosixMmapFile(fname, fd, 4096, options));
+            result->reset(new PosixMmapFile(fname, fd, 4096, options));
         } else if (options.use_direct_writes && !options.use_mmap_writes) {
     #ifdef OS_MACOSX
         if (fcntl(fd, F_NOCACHE, 1) == -1) {
@@ -153,14 +153,14 @@ namespace rocksdb{
             fname, fd, GetLogicalBlockSizeForWriteIfNeeded(options, fname, fd),
             options)));
         } else {
-        // disable mmap writes
-        EnvOptions no_mmap_writes_options = options;
-        no_mmap_writes_options.use_mmap_writes = false;
-        result->reset(
-            new WritableFileIou(fname, fd,
-                                    GetLogicalBlockSizeForWriteIfNeeded(
-                                        no_mmap_writes_options, fname, fd),
-                                    no_mmap_writes_options));
+            // disable mmap writes
+            EnvOptions no_mmap_writes_options = options;
+            no_mmap_writes_options.use_mmap_writes = false;
+            result->reset(
+                new WritableFileIou(fname, fd,
+                                        GetLogicalBlockSizeForWriteIfNeeded(
+                                            no_mmap_writes_options, fname, fd),
+                                        no_mmap_writes_options));
         }
         return s;
     }
@@ -177,19 +177,19 @@ namespace rocksdb{
         FILE* file = nullptr;
 
         if (options.use_direct_reads && !options.use_mmap_reads) {
-    #if !defined(OS_MACOSX) && !defined(OS_OPENBSD) && !defined(OS_SOLARIS)
-        flags |= O_DIRECT;
-        TEST_SYNC_POINT_CALLBACK("NewSequentialFile:O_DIRECT", &flags);
-    #endif
+        #if !defined(OS_MACOSX) && !defined(OS_OPENBSD) && !defined(OS_SOLARIS)
+            flags |= O_DIRECT;
+            TEST_SYNC_POINT_CALLBACK("NewSequentialFile:O_DIRECT", &flags);
+        #endif
         }
 
         do {
-        // IOSTATS_TIMER_GUARD(open_nanos);
-        fd = open(fname.c_str(), flags, 0644);
-        } while (fd < 0 && errno == EINTR);
-        if (fd < 0) {
-        return IOError("While opening a file for sequentially reading", fname,
-                        errno);
+            // IOSTATS_TIMER_GUARD(open_nanos);
+            fd = open(fname.c_str(), flags, 0644);
+            } while (fd < 0 && errno == EINTR);
+            if (fd < 0) {
+            return IOError("While opening a file for sequentially reading", fname,
+                            errno);
         }
 
         SetFD_CLOEXEC(fd, &options);
@@ -217,7 +217,7 @@ namespace rocksdb{
                            std::unique_ptr<FSWritableFile>* result,
                            IODebugContext* dbg)
     {
-        return OpenWritableFileIou(fname, options, false, result, dbg);
+        return OpenWritableFileIou(fname, options, true, result, dbg);
     }
 
     int IouRing::IouRingRead(size_t n, Slice* result, char* scratch, int block_size, int fd)
@@ -356,9 +356,17 @@ namespace rocksdb{
     // WritableFileDummy::SetWriteLifeTimeHint 
     // WritableFileDummy::Sync 
     // WritableFileDummy::use_direct_io 
+
+    uint64_t getActualFileSize(int fd){
+        struct stat64 s;
+        fstat64(fd, &s);
+        return s.st_size;
+    }
     
-    IOStatus WritableFileIou::Append(const Slice& data, const IOOptions& /*opts*/,
-                                   IODebugContext* /*dbg*/) {
+    IOStatus WritableFileIou::Append(const Slice& data, const IOOptions& opts,
+                                   IODebugContext* dbg) {
+        
+        
         if (use_direct_io()) {
             assert(IsSectorAligned(data.size(), GetRequiredBufferAlignment()));
             assert(IsSectorAligned(data.data(), GetRequiredBufferAlignment()));
@@ -370,9 +378,24 @@ namespace rocksdb{
         if (ring->get()->IouRingWrite(data, fd_, logical_sector_size_) != 0) {
             return IOError("While appending to file", PosixWritableFile::filename_, errno);
         }
+        
+        // std::cout << "bookkept filesize: " << filesize_ + nbytes << " actual filesize: " 
+        //     << getActualFileSize(fd_) << " in thread " << std::this_thread::get_id() 
+        //     << " fd: " << fd_ << "flags: " <<  fcntl(fd_, F_GETFL) << "\n";
+;
 
+        WritableFileIou::totalBytesWritten += nbytes;
+        // std::cout << "totalbytes written " << totalBytesWritten << "\n";
         PosixWritableFile::filesize_ += nbytes;
+        fsync(fd_);
+        if (filesize_ > getActualFileSize(fd_) + 1000)
+        {
+            std::cout << "failed when doing write of size: " << data.size() << " file: " << filename_ << "\n";
+            assert(filesize_ == getActualFileSize(fd_));
+        }
+        
         return IOStatus::OK();
     }
+    uint64_t WritableFileIou::totalBytesWritten = 0;
 }
 

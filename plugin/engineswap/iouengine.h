@@ -76,15 +76,23 @@ class SequentialFileIou : public PosixSequentialFile {
 };
 
 class WritableFileIou : public PosixWritableFile {
+ 
+  
  public:
+  static uint64_t totalBytesWritten;
   WritableFileIou(const std::string& fname, int nfd,
                     size_t nlogical_block_size, const EnvOptions& noptions) :
                     PosixWritableFile(fname, nfd, nlogical_block_size, noptions)
   {
-
+    totalBytesWritten = 0;
+  }
+  ~WritableFileIou(){
+    std::cout << "Writable file destroyed, total written bytes: " << totalBytesWritten << " \n";
+    // PosixWritableFile::~PosixWritableFile();
   }
   IOStatus Append(const Slice& data, const IOOptions& /*opts*/,
                                    IODebugContext* /*dbg*/) override;
+  bool IsSyncThreadSafe() const override { return false; }
 
 };
 
