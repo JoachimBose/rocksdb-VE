@@ -54,7 +54,7 @@ FactoryFunc<FileSystem> engineswap_reg =
     }
     else if (nengine_type.compare(URI_IOU) == 0){
       setEngineType(Iou)
-      // std::cout << "Selected api is io_uring but is not yet implemented :(\n";
+      std::cout << "Selected api is IO_URING, the fan favorite backend :) \n";
     }
     else if (nengine_type.compare(URI_AIO) == 0){
       //setEngineType(Aio)
@@ -72,7 +72,6 @@ FactoryFunc<FileSystem> engineswap_reg =
                              std::unique_ptr<FSSequentialFile>* r,
                              IODebugContext* dbg) {
     
-    std::cout << "creating new sequential file\n";
     if(engine_type.compare(URI_DUMMY) != 0){
       return NewSequentialFileStub(f, file_opts, r, dbg);
     }
@@ -91,7 +90,6 @@ FactoryFunc<FileSystem> engineswap_reg =
                                std::unique_ptr<FSRandomAccessFile>* r,
                                IODebugContext* dbg) {
     
-    std::cout << "creating new randomaccess file\n";
     if(engine_type.compare(URI_DUMMY) != 0){
       return NewRandomAccessFileStub(f, file_opts, r, dbg);
     }
@@ -109,9 +107,7 @@ FactoryFunc<FileSystem> engineswap_reg =
                            const FileOptions& file_opts,
                            std::unique_ptr<FSWritableFile>* r,
                            IODebugContext* dbg) {
-    std::cout << "creating new writeable file\n";
     if(engine_type.compare(URI_DUMMY) != 0){
-      std::cout << "calling the stub \n";
       return NewWritableFileStub(f, file_opts, r, dbg);
     }
     else{
@@ -132,7 +128,7 @@ FactoryFunc<FileSystem> engineswap_reg =
 std::unique_ptr<FileSystem>
 NewEngineSwapFileSystem(std::string engine_type) {
   std::unique_ptr<FileSystem> fs = std::unique_ptr<FileSystem>(
-    new FileSystemDummy(std::unique_ptr<FileSystem>(new EngineSwapFileSystem(FileSystem::Default(), engine_type))));
+    std::unique_ptr<FileSystem>(new EngineSwapFileSystem(FileSystem::Default(), engine_type)));
     std::cout << "creating new engine with type: " << engine_type << "\n";
   return fs;
 

@@ -78,9 +78,9 @@ namespace rocksdb{
         if (options.use_direct_reads && !options.use_mmap_reads) {
 
         }
-        result->reset(new RandomAccessFileDummy(new RandomAccessFileIou(
+        result->reset(new RandomAccessFileIou(
             fname, fd, GetLogicalBlockSizeForReadIfNeeded(options, fname, fd),
-            options)));
+            options));
         }
         return s;
     }
@@ -185,7 +185,7 @@ namespace rocksdb{
 
         do {
             // IOSTATS_TIMER_GUARD(open_nanos);
-            fd = open(fname.c_str(), flags, 0644);
+                fd = open(fname.c_str(), flags, 0644);
             } while (fd < 0 && errno == EINTR);
             if (fd < 0) {
             return IOError("While opening a file for sequentially reading", fname,
@@ -207,9 +207,9 @@ namespace rocksdb{
                         errno);
         }
         }
-        result->reset(new SequentialFileDummy(new SequentialFileIou(
+        result->reset(new SequentialFileIou(
             fname, file, fd, GetLogicalBlockSizeForReadIfNeeded(options, fname, fd),
-            options)));
+            options));
         return IOStatus::OK();   
     }
 
@@ -217,13 +217,13 @@ namespace rocksdb{
                            std::unique_ptr<FSWritableFile>* result,
                            IODebugContext* dbg)
     {
-        return OpenWritableFileIou(fname, options, true, result, dbg);
+        return OpenWritableFileIou(fname, options, true, result, dbg); //modified reopen
     }
 
-    int IouRing::IouRingRead(size_t n, Slice* result, char* scratch, int block_size, int fd)
+    int IouRing::IouRingRead(size_t n, Slice* result, char* scratch, int block_size, int fd, off_t read_offset)
     {
-        // submit requests per block
         off_t offset = 0;
+        // submit requests per block
         size_t bytes_remaining = n;
         int current_block = 0;
 
@@ -234,42 +234,42 @@ namespace rocksdb{
         struct iovec* iovecvec = (struct iovec*)calloc(blocks, sizeof(struct iovec));
         if (!iovecvec)
         {
-        std::cerr << "iovecvec calloc failed \n";
-        return -1;
+            std::cerr << "iovecvec calloc failed \n";
+            return -1;
         }
         
         while (bytes_remaining > 0)
         {
-        off_t bytes_to_read = bytes_remaining;
-        if (bytes_to_read > block_size)
-            bytes_to_read = block_size;
-        
-        iovecvec[current_block].iov_len = bytes_to_read;
-        iovecvec[current_block].iov_base = (void*)scratch + offset;
-        
-        offset += bytes_to_read;
-        current_block++;
-        bytes_remaining -= bytes_to_read;
+            off_t bytes_to_read = bytes_remaining;
+            if (bytes_to_read > block_size)
+                bytes_to_read = block_size;
+            
+            iovecvec[current_block].iov_len = bytes_to_read;
+            iovecvec[current_block].iov_base = (void*)(scratch + offset);
+            
+            offset += bytes_to_read;
+            current_block++;
+            bytes_remaining -= bytes_to_read;
         }
         
         struct io_uring_sqe *sqe = io_uring_get_sqe(&ring);
-        io_uring_prep_readv(sqe, fd, iovecvec, blocks, 0);
+        io_uring_prep_readv(sqe, fd, iovecvec, blocks, read_offset);
         io_uring_sqe_set_data(sqe, iovecvec);
         io_uring_submit(&this->ring);
 
         struct io_uring_cqe *cqe;
         int ret = io_uring_wait_cqe(&ring, &cqe);
         if (ret < 0) {
-            perror("io_uring_wait_cqe");
+            std::cout << ("io_uring_wait_cqe\n");
             io_uring_cqe_seen(&ring, cqe);
             free(iovecvec);
-            return 1;
+            return -1;
         }
         if (cqe->res < 0) {
-            fprintf(stderr, "Async readv failed.\n");
+            std::cout << "Async readv fail result: " << cqe->res << " target " << n << "\n";
             io_uring_cqe_seen(&ring, cqe);
             free(iovecvec);
-        return 1;
+            return -1;
         }
 
         iovecvec = (struct iovec*)io_uring_cqe_get_data(cqe);
@@ -293,22 +293,22 @@ namespace rocksdb{
         struct iovec* iovecvec = (struct iovec*)calloc(blocks, sizeof(struct iovec));
         if (!iovecvec)
         {
-        std::cerr << "iovecvec calloc failed \n";
-        return -1;
+            std::cerr << "iovecvec calloc failed \n";
+            return -1;
         }
         
         while (bytes_remaining > 0)
         {
-        off_t bytes_to_write = bytes_remaining;
-        if (bytes_to_write > block_size)
-            bytes_to_write = block_size;
+            off_t bytes_to_write = bytes_remaining;
+            if (bytes_to_write > block_size)
+                bytes_to_write = block_size;
 
-        iovecvec[current_block].iov_len = bytes_to_write;
-        iovecvec[current_block].iov_base = (void*)data.data() + offset;
+            iovecvec[current_block].iov_len = bytes_to_write;
+            iovecvec[current_block].iov_base = (void*)(data.data() + offset);
 
-        offset += bytes_to_write;
-        current_block++;
-        bytes_remaining -= bytes_to_write;
+            offset += bytes_to_write;
+            current_block++;
+            bytes_remaining -= bytes_to_write;
         }
 
         struct io_uring_sqe *sqe = io_uring_get_sqe(&ring);
@@ -324,8 +324,8 @@ namespace rocksdb{
             free(iovecvec);
             return -1;
         }
-        if (cqe->res != data.size()) {
-            std::cout <<  "Async writev failed.\n";
+        if (cqe->res > 0 && cqe->res != (signed long)data.size()) { // is there any situation where this should not be right?
+            std::cout <<  "Async writev failed " << cqe->res << "\n";
             std::cout << "write result: " << cqe->res << " target " << data.size() << "\n";
             io_uring_cqe_seen(&ring, cqe);
             free(iovecvec);
@@ -357,14 +357,56 @@ namespace rocksdb{
     // WritableFileDummy::Sync 
     // WritableFileDummy::use_direct_io 
 
+    IOStatus RandomAccessFileIou::Read(uint64_t offset, size_t n,
+                                     const IOOptions& /*opts*/, Slice* result,
+                                     char* scratch,
+                                     IODebugContext* /*dbg*/) const {
+        if (use_direct_io()) {
+            assert(IsSectorAligned(offset, GetRequiredBufferAlignment()));
+            assert(IsSectorAligned(n, GetRequiredBufferAlignment()));
+            assert(IsSectorAligned(scratch, GetRequiredBufferAlignment()));
+        }
+        IOStatus s;
+        ssize_t r = -1;
+        
+        std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing();
+        r = ring->get()->IouRingRead(n, result, scratch, logical_sector_size_, fd_, offset);
+        if (r < 0) {
+            // An error: return a non-ok status
+            return IOError("While random pread offset " + std::to_string(offset) + " len " +
+                            std::to_string(n),
+                        filename_, errno);
+        }
+        return s;
+    }
+    IOStatus SequentialFileIou::Read(size_t n, const IOOptions& /*opts*/,
+                                   Slice* result, char* scratch,
+                                   IODebugContext* /*dbg*/) {
+        
+        assert(result != nullptr && !use_direct_io());
+        IOStatus s = IOStatus::OK();
+        int r = 0;
+        // do {
+        //     clearerr(file_);
+        //     r = fread_unlocked(scratch, 1, n, file_);
+        // } while (r == 0 && ferror(file_) && errno == EINTR);
+        std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing();
+        r = ring->get()->IouRingRead(n, result, scratch, logical_sector_size_, fd_, currentByte);
+        if (r < 0) {
+            return IOError("While sequentially reading from", PosixSequentialFile::filename_, errno);
+        }
+        currentByte += result->size();
+        return s;
+        }
+
     uint64_t getActualFileSize(int fd){
         struct stat64 s;
         fstat64(fd, &s);
         return s.st_size;
     }
     
-    IOStatus WritableFileIou::Append(const Slice& data, const IOOptions& opts,
-                                   IODebugContext* dbg) {
+    IOStatus WritableFileIou::Append(const Slice& data, const IOOptions& /*opts*/,
+                                   IODebugContext* /*dbg*/) {
         
         
         if (use_direct_io()) {
@@ -378,24 +420,10 @@ namespace rocksdb{
         if (ring->get()->IouRingWrite(data, fd_, logical_sector_size_) != 0) {
             return IOError("While appending to file", PosixWritableFile::filename_, errno);
         }
-        
-        // std::cout << "bookkept filesize: " << filesize_ + nbytes << " actual filesize: " 
-        //     << getActualFileSize(fd_) << " in thread " << std::this_thread::get_id() 
-        //     << " fd: " << fd_ << "flags: " <<  fcntl(fd_, F_GETFL) << "\n";
-;
 
-        WritableFileIou::totalBytesWritten += nbytes;
-        // std::cout << "totalbytes written " << totalBytesWritten << "\n";
         PosixWritableFile::filesize_ += nbytes;
-        fsync(fd_);
-        if (filesize_ > getActualFileSize(fd_) + 1000)
-        {
-            std::cout << "failed when doing write of size: " << data.size() << " file: " << filename_ << "\n";
-            assert(filesize_ == getActualFileSize(fd_));
-        }
         
         return IOStatus::OK();
     }
-    uint64_t WritableFileIou::totalBytesWritten = 0;
 }
 

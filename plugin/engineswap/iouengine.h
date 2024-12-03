@@ -44,7 +44,7 @@ public:
     io_uring_queue_exit(&ring);
   }
   int IouRingWrite(const Slice& data, int fd, int block_size);
-  int IouRingRead(size_t n, Slice* result, char* scratch, int block_size, int fd);
+  int IouRingRead(size_t n, Slice* result, char* scratch, int block_size, int fd, off_t offset);
 
 };
 
@@ -59,35 +59,37 @@ class RandomAccessFileIou : public PosixRandomAccessFile {
 #endif
                         )
   {
-
+    //constructor
   }
+
+  IOStatus Read(uint64_t offset, size_t n, const IOOptions& opts, Slice* result,
+                char* scratch, IODebugContext* dbg) const override;
 };
 
 class SequentialFileIou : public PosixSequentialFile {
+ protected:
+  off64_t currentByte;
  public:
   SequentialFileIou(const std::string& fname, FILE* nfile, int nfd,
                       size_t nlogical_block_size, const EnvOptions& noptions) :
                       PosixSequentialFile(fname, nfile, nfd, nlogical_block_size, noptions)
   {
-
+    currentByte = 0;
   }
-  // IOStatus Read(size_t n, const IOOptions& opts, Slice* result, char* scratch,
-  //               IODebugContext* dbg) override;
+  IOStatus Read(size_t n, const IOOptions& opts, Slice* result, char* scratch,
+                IODebugContext* dbg) override;
 };
 
 class WritableFileIou : public PosixWritableFile {
  
   
  public:
-  static uint64_t totalBytesWritten;
   WritableFileIou(const std::string& fname, int nfd,
                     size_t nlogical_block_size, const EnvOptions& noptions) :
                     PosixWritableFile(fname, nfd, nlogical_block_size, noptions)
   {
-    totalBytesWritten = 0;
   }
   ~WritableFileIou(){
-    std::cout << "Writable file destroyed, total written bytes: " << totalBytesWritten << " \n";
     // PosixWritableFile::~PosixWritableFile();
   }
   IOStatus Append(const Slice& data, const IOOptions& /*opts*/,
