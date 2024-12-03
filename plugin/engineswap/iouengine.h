@@ -37,7 +37,7 @@ public:
         fprintf(stderr, "que init failed %i \n errno = %i\n errno: %s\n", ret, errno, strerror(errno));
     }
     else{
-      std::cout << "init success \n";
+      // std::cout << "init success \n";
     }
   }
   ~IouRing(){
@@ -92,6 +92,7 @@ class WritableFileIou : public PosixWritableFile {
   ~WritableFileIou(){
     // PosixWritableFile::~PosixWritableFile();
   }
+  using PosixWritableFile::Append;
   IOStatus Append(const Slice& data, const IOOptions& /*opts*/,
                                    IODebugContext* /*dbg*/) override;
   bool IsSyncThreadSafe() const override { return false; }
