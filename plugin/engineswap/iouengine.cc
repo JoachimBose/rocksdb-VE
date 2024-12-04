@@ -1,5 +1,6 @@
 #include "iouengine.h"
 #include "filedummies.h"
+#include "filealarms.h"
 #include "util.h"
 #include "engineswap.h"
 #include <fcntl.h>
@@ -78,9 +79,9 @@ namespace rocksdb{
         if (options.use_direct_reads && !options.use_mmap_reads) {
 
         }
-        result->reset(new RandomAccessFileIou(
+        result->reset(new RandomAccessFileAlarm(new RandomAccessFileIou(
             fname, fd, GetLogicalBlockSizeForReadIfNeeded(options, fname, fd),
-            options));
+            options)));
         }
         return s;
     }
@@ -149,7 +150,7 @@ namespace rocksdb{
             }
         }
     #endif
-        result->reset((new WritableFileIou(
+        result->reset(new WritableFileAlarm(new WritableFileIou(
             fname, fd, GetLogicalBlockSizeForWriteIfNeeded(options, fname, fd),
             options)));
         } else {
@@ -157,10 +158,10 @@ namespace rocksdb{
             EnvOptions no_mmap_writes_options = options;
             no_mmap_writes_options.use_mmap_writes = false;
             result->reset(
-                new WritableFileIou(fname, fd,
+                new WritableFileAlarm (new WritableFileIou(fname, fd,
                                         GetLogicalBlockSizeForWriteIfNeeded(
                                             no_mmap_writes_options, fname, fd),
-                                        no_mmap_writes_options));
+                                        no_mmap_writes_options)));
         }
         return s;
     }
@@ -207,9 +208,9 @@ namespace rocksdb{
                         errno);
         }
         }
-        result->reset(new SequentialFileIou(
+        result->reset(new SequentialFileAlarm(new SequentialFileIou(
             fname, file, fd, GetLogicalBlockSizeForReadIfNeeded(options, fname, fd),
-            options));
+            options)));
         return IOStatus::OK();   
     }
 
