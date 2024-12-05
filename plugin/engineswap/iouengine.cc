@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <iostream>
 #include <sys/statfs.h>
+#include <sys/sdt.h>
 
 #if !defined(TMPFS_MAGIC)
 #define TMPFS_MAGIC 0x01021994
@@ -409,7 +410,8 @@ namespace rocksdb{
     IOStatus WritableFileIou::Append(const Slice& data, const IOOptions& /*opts*/,
                                    IODebugContext* /*dbg*/) {
         
-        
+        DTRACE_PROBE(iouengine, write);
+
         if (use_direct_io()) {
             assert(IsSectorAligned(data.size(), GetRequiredBufferAlignment()));
             assert(IsSectorAligned(data.data(), GetRequiredBufferAlignment()));
