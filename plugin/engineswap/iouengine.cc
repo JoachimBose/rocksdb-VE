@@ -372,6 +372,7 @@ namespace rocksdb{
         ssize_t r = -1;
         
         std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing();
+        DTRACE_PROBE(io_uring, rdread);
         r = ring->get()->IouRingRead(n, result, scratch, logical_sector_size_, fd_, offset);
         if (r < 0) {
             // An error: return a non-ok status
@@ -384,7 +385,7 @@ namespace rocksdb{
     IOStatus SequentialFileIou::Read(size_t n, const IOOptions& /*opts*/,
                                    Slice* result, char* scratch,
                                    IODebugContext* /*dbg*/) {
-        
+        DTRACE_PROBE(io_uring, sqread);
         assert(result != nullptr && !use_direct_io());
         IOStatus s = IOStatus::OK();
         int r = 0;
@@ -410,7 +411,7 @@ namespace rocksdb{
     IOStatus WritableFileIou::Append(const Slice& data, const IOOptions& /*opts*/,
                                    IODebugContext* /*dbg*/) {
         
-        DTRACE_PROBE(iouengine, write);
+        DTRACE_PROBE(io_uring, write);
 
         if (use_direct_io()) {
             assert(IsSectorAligned(data.size(), GetRequiredBufferAlignment()));
