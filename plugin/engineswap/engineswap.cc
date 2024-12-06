@@ -31,6 +31,15 @@ FactoryFunc<FileSystem> engineswap_reg =
 
 
  
+
+  std::unique_ptr<AioRing>* EngineSwapFileSystem::getAioRing(){
+    if (aioRing.get() == nullptr)
+    {
+      aioRing.reset(new AioRing());
+    }
+    
+    return &aioRing;
+    
   std::unique_ptr<IouRing>* EngineSwapFileSystem::getRing(){
     if (ring.get() == nullptr)
     {
@@ -57,7 +66,7 @@ FactoryFunc<FileSystem> engineswap_reg =
       std::cout << "Selected api is IO_URING, the fan favorite backend :) \n";
     }
     else if (nengine_type.compare(URI_AIO) == 0){
-      //setEngineType(Aio)
+      setEngineType(Aio)
       std::cout << "Selected api is libaio but is not yet implemented :(\n";
     }
     else if (nengine_type.compare(URI_DUMMY) == 0){

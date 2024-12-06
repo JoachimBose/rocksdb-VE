@@ -5,6 +5,7 @@
 
 #include <string>
 #include "rocksdb/file_system.h"
+#include "aioengine.h"
 #include "iouengine.h"
 #include "posixengine.h"
 #include "filedummies.h"
@@ -36,11 +37,15 @@ namespace ROCKSDB_NAMESPACE {
                                     std::unique_ptr<FSWritableFile>* r,
                                     IODebugContext* dbg);
         std::string engine_type;
+      
+        inline static thread_local std::unique_ptr<AioRing> aioRing; //should be initialised to zeros
         inline static thread_local std::unique_ptr<IouRing> ring; //should be initialised to zeros
         
     public:
         const char* Name() const override;
+        static std::unique_ptr<AioRing>* getAioRing();        
         static std::unique_ptr<IouRing>* getRing();
+
         EngineSwapFileSystem(std::shared_ptr<FileSystem> t, std::string nengine_type);
         IOStatus NewSequentialFile(const std::string& f, const FileOptions& file_opts,
                              std::unique_ptr<FSSequentialFile>* r,
@@ -57,4 +62,6 @@ namespace ROCKSDB_NAMESPACE {
     
 
 };  // namespace ROCKSDB_NAMESPACE
+
 #endif
+
