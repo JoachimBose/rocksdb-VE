@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
+#include <sys/sysmacros.h>
 
 #if !defined(TMPFS_MAGIC)
 #define TMPFS_MAGIC 0x01021994

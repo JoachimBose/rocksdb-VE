@@ -31,6 +31,7 @@ FactoryFunc<FileSystem> engineswap_reg =
 
 
  
+
   std::unique_ptr<AioRing>* EngineSwapFileSystem::getAioRing(){
     if (aioRing.get() == nullptr)
     {
@@ -38,6 +39,14 @@ FactoryFunc<FileSystem> engineswap_reg =
     }
     
     return &aioRing;
+    
+  std::unique_ptr<IouRing>* EngineSwapFileSystem::getRing(){
+    if (ring.get() == nullptr)
+    {
+      ring.reset(new IouRing());
+    }
+    
+    return &ring;
   }
   
   EngineSwapFileSystem::EngineSwapFileSystem(std::shared_ptr<FileSystem> t, std::string nengine_type) : FileSystemWrapper(t) {
@@ -53,7 +62,7 @@ FactoryFunc<FileSystem> engineswap_reg =
       setEngineType(Posix);
     }
     else if (nengine_type.compare(URI_IOU) == 0){
-      //setEngineType(Iou)
+      setEngineType(Iou)
       std::cout << "Selected api is IO_URING, the fan favorite backend :) \n";
     }
     else if (nengine_type.compare(URI_AIO) == 0){

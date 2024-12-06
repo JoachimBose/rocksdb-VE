@@ -78,12 +78,7 @@ namespace rocksdb{
         }
         result->reset(new RandomAccessFilePosix(
             fname, fd, GetLogicalBlockSizeForReadIfNeeded(options, fname, fd),
-            options
-    #if defined(ROCKSDB_IOURING_PRESENT)
-            ,
-            !IsIOUringEnabled() ? nullptr : thread_local_io_urings_.get()
-    #endif
-                ));
+            options));
         }
         return s;
     }

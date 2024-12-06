@@ -1,0 +1,38 @@
+#!/usr/bin/bpftrace
+
+// U:/home/joachim/Desktop/GitHub/rocksdb-VE/librocksdb.so.9.7:myprobe{
+//     printf("probe works!\n");
+// }
+// 
+// tracepoint:syscalls:sys_enter_read{
+//     printf("%s does a read %d \n", comm, pid);
+// }
+
+// Define a map to store timestamps per thread
+BEGIN {
+    //@timestamps[tid] = perthread;
+    
+}
+// Attach to the USDT probe
+U:/home/joachim/Desktop/GitHub/rocksdb-VE/librocksdb.so.9.7:myprobe
+{
+    // Store the current timestamp in nanoseconds
+    @timestamps[tid] = count();
+    @lastTimeStamp[tid] = nsecs;
+}
+
+// Attach to the sys_enter_read tracepoint
+tracepoint:syscalls:sys_enter_write
+{
+    // Check if we have a stored timestamp for this thread
+    if (@lastTimeStamp[tid]) {
+        // Calculate the time difference
+        $delta = nsecs - @lastTimeStamp[tid];
+        
+        // Print the time difference
+        printf("Time difference for thread %d: %d ns\n", tid, $delta);
+        
+        // Clear the timestamp for this thread
+        delete(@timestamps[tid]);
+    }
+}

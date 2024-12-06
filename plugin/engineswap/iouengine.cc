@@ -1,6 +1,8 @@
 #include "iouengine.h"
 #include "filedummies.h"
+#include "filealarms.h"
 #include "util.h"
+#include "engineswap.h"
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/mman.h>
@@ -9,6 +11,7 @@
 #include <sys/stat.h>
 #include <iostream>
 #include <sys/statfs.h>
+#include <sys/sdt.h>
 
 #if !defined(TMPFS_MAGIC)
 #define TMPFS_MAGIC 0x01021994
@@ -77,14 +80,9 @@ namespace rocksdb{
         if (options.use_direct_reads && !options.use_mmap_reads) {
 
         }
-        result->reset(new RandomAccessFileIou(
+        result->reset(new RandomAccessFileAlarm(new RandomAccessFileIou(
             fname, fd, GetLogicalBlockSizeForReadIfNeeded(options, fname, fd),
-            options
-    #if defined(ROCKSDB_IOURING_PRESENT)
-            ,
-            !IsIOUringEnabled() ? nullptr : thread_local_io_urings_.get()
-    #endif
-                ));
+            options)));
         }
         return s;
     }
@@ -106,36 +104,36 @@ namespace rocksdb{
         // appends data to the end of the file, regardless of the value of
         // offset.
         // More info here: https://linux.die.net/man/2/pwrite
-        flags |= O_WRONLY;
-    #if !defined(OS_MACOSX) && !defined(OS_OPENBSD) && !defined(OS_SOLARIS)
-        flags |= O_DIRECT;
+            flags |= O_WRONLY;
+        #if !defined(OS_MACOSX) && !defined(OS_OPENBSD) && !defined(OS_SOLARIS)
+            flags |= O_DIRECT;
     #endif
         TEST_SYNC_POINT_CALLBACK("NewWritableFile:O_DIRECT", &flags);
         } else if (options.use_mmap_writes) {
         // non-direct I/O
-        flags |= O_RDWR;
+            flags |= O_RDWR;
         } else {
-        flags |= O_WRONLY;
+            flags |= O_WRONLY;
         }
 
         flags = cloexec_flags(flags, &options);
 
         do {
         // IOSTATS_TIMER_GUARD(open_nanos);
-        fd = open(fname.c_str(), flags, 0644);
+            fd = open(fname.c_str(), flags, 0644);
         } while (fd < 0 && errno == EINTR);
 
         if (fd < 0) {
-        s = IOError("While open a file for appending", fname, errno);
-        return s;
+            s = IOError("While open a file for appending", fname, errno);
+            return s;
         }
         SetFD_CLOEXEC(fd, &options);
 
         if (options.use_mmap_writes) {
-        MaybeForceDisableMmap(fd);
+            MaybeForceDisableMmap(fd);
         }
         if (options.use_mmap_writes && !false) {
-        result->reset(new PosixMmapFile(fname, fd, 4096, options));
+            result->reset(new PosixMmapFile(fname, fd, 4096, options));
         } else if (options.use_direct_writes && !options.use_mmap_writes) {
     #ifdef OS_MACOSX
         if (fcntl(fd, F_NOCACHE, 1) == -1) {
@@ -153,18 +151,18 @@ namespace rocksdb{
             }
         }
     #endif
-        result->reset(new WritableFileIou(
+        result->reset(new WritableFileAlarm(new WritableFileIou(
             fname, fd, GetLogicalBlockSizeForWriteIfNeeded(options, fname, fd),
-            options));
+            options)));
         } else {
-        // disable mmap writes
-        EnvOptions no_mmap_writes_options = options;
-        no_mmap_writes_options.use_mmap_writes = false;
-        result->reset(
-            new WritableFileIou(fname, fd,
-                                    GetLogicalBlockSizeForWriteIfNeeded(
-                                        no_mmap_writes_options, fname, fd),
-                                    no_mmap_writes_options));
+            // disable mmap writes
+            EnvOptions no_mmap_writes_options = options;
+            no_mmap_writes_options.use_mmap_writes = false;
+            result->reset(
+                new WritableFileAlarm (new WritableFileIou(fname, fd,
+                                        GetLogicalBlockSizeForWriteIfNeeded(
+                                            no_mmap_writes_options, fname, fd),
+                                        no_mmap_writes_options)));
         }
         return s;
     }
@@ -181,19 +179,19 @@ namespace rocksdb{
         FILE* file = nullptr;
 
         if (options.use_direct_reads && !options.use_mmap_reads) {
-    #if !defined(OS_MACOSX) && !defined(OS_OPENBSD) && !defined(OS_SOLARIS)
-        flags |= O_DIRECT;
-        TEST_SYNC_POINT_CALLBACK("NewSequentialFile:O_DIRECT", &flags);
-    #endif
+        #if !defined(OS_MACOSX) && !defined(OS_OPENBSD) && !defined(OS_SOLARIS)
+            flags |= O_DIRECT;
+            TEST_SYNC_POINT_CALLBACK("NewSequentialFile:O_DIRECT", &flags);
+        #endif
         }
 
         do {
-        // IOSTATS_TIMER_GUARD(open_nanos);
-        fd = open(fname.c_str(), flags, 0644);
-        } while (fd < 0 && errno == EINTR);
-        if (fd < 0) {
-        return IOError("While opening a file for sequentially reading", fname,
-                        errno);
+            // IOSTATS_TIMER_GUARD(open_nanos);
+                fd = open(fname.c_str(), flags, 0644);
+            } while (fd < 0 && errno == EINTR);
+            if (fd < 0) {
+            return IOError("While opening a file for sequentially reading", fname,
+                            errno);
         }
 
         SetFD_CLOEXEC(fd, &options);
@@ -211,9 +209,9 @@ namespace rocksdb{
                         errno);
         }
         }
-        result->reset(new SequentialFileIou(
+        result->reset(new SequentialFileAlarm(new SequentialFileIou(
             fname, file, fd, GetLogicalBlockSizeForReadIfNeeded(options, fname, fd),
-            options));
+            options)));
         return IOStatus::OK();   
     }
 
@@ -221,8 +219,126 @@ namespace rocksdb{
                            std::unique_ptr<FSWritableFile>* result,
                            IODebugContext* dbg)
     {
-        return OpenWritableFileIou(fname, options, false, result, dbg);
+        return OpenWritableFileIou(fname, options, true, result, dbg); //modified reopen
     }
+
+    int IouRing::IouRingRead(size_t n, Slice* result, char* scratch, int block_size, int fd, off_t read_offset)
+    {
+        off_t offset = 0;
+        // submit requests per block
+        size_t bytes_remaining = n;
+        int current_block = 0;
+
+        int blocks = (int)n / block_size;
+        if (n % block_size) blocks++;
+        
+        //one iovec per request
+        struct iovec* iovecvec = (struct iovec*)calloc(blocks, sizeof(struct iovec));
+        if (!iovecvec)
+        {
+            std::cerr << "iovecvec calloc failed \n";
+            return -1;
+        }
+        
+        while (bytes_remaining > 0)
+        {
+            off_t bytes_to_read = bytes_remaining;
+            if (bytes_to_read > block_size)
+                bytes_to_read = block_size;
+            
+            iovecvec[current_block].iov_len = bytes_to_read;
+            iovecvec[current_block].iov_base = (void*)(scratch + offset);
+            
+            offset += bytes_to_read;
+            current_block++;
+            bytes_remaining -= bytes_to_read;
+        }
+        
+        struct io_uring_sqe *sqe = io_uring_get_sqe(&ring);
+        io_uring_prep_readv(sqe, fd, iovecvec, blocks, read_offset);
+        io_uring_sqe_set_data(sqe, iovecvec);
+        io_uring_submit(&this->ring);
+
+        struct io_uring_cqe *cqe;
+        int ret = io_uring_wait_cqe(&ring, &cqe);
+        if (ret < 0) {
+            std::cout << ("io_uring_wait_cqe\n");
+            io_uring_cqe_seen(&ring, cqe);
+            free(iovecvec);
+            return -1;
+        }
+        if (cqe->res < 0) {
+            std::cout << "Async readv fail result: " << cqe->res << " target " << n << "\n";
+            io_uring_cqe_seen(&ring, cqe);
+            free(iovecvec);
+            return -1;
+        }
+
+        iovecvec = (struct iovec*)io_uring_cqe_get_data(cqe);
+        
+        *result = Slice(scratch, cqe->res);
+        free(iovecvec);
+        io_uring_cqe_seen(&ring, cqe); //stuff in the cqe cannot be accessed anymore, 
+        return 0;
+    } 
+
+    int IouRing::IouRingWrite(const Slice& data, int fd, int block_size)
+    {
+        int current_block = 0;
+        off_t offset = 0;
+
+        int blocks = (int)data.size() / block_size;
+        size_t bytes_remaining = data.size();
+
+        if (data.size() % block_size) blocks++;
+        
+        struct iovec* iovecvec = (struct iovec*)calloc(blocks, sizeof(struct iovec));
+        if (!iovecvec)
+        {
+            std::cerr << "iovecvec calloc failed \n";
+            return -1;
+        }
+        
+        while (bytes_remaining > 0)
+        {
+            off_t bytes_to_write = bytes_remaining;
+            if (bytes_to_write > block_size)
+                bytes_to_write = block_size;
+
+            iovecvec[current_block].iov_len = bytes_to_write;
+            iovecvec[current_block].iov_base = (void*)(data.data() + offset);
+
+            offset += bytes_to_write;
+            current_block++;
+            bytes_remaining -= bytes_to_write;
+        }
+
+        struct io_uring_sqe *sqe = io_uring_get_sqe(&ring);
+        io_uring_prep_writev(sqe, fd, iovecvec, blocks, 0);
+        io_uring_sqe_set_data(sqe, iovecvec);
+        io_uring_submit(&this->ring);
+
+        struct io_uring_cqe *cqe;
+        int ret = io_uring_wait_cqe(&ring, &cqe);
+        if (ret < 0) {
+            std::cout <<"io_uring_wait_cqe \n";
+            io_uring_cqe_seen(&ring, cqe);
+            free(iovecvec);
+            return -1;
+        }
+        if (cqe->res > 0 && cqe->res != (signed long)data.size()) { // is there any situation where this should not be right?
+            std::cout <<  "Async writev failed " << cqe->res << "\n";
+            std::cout << "write result: " << cqe->res << " target " << data.size() << "\n";
+            io_uring_cqe_seen(&ring, cqe);
+            free(iovecvec);
+            return -1;
+        }
+
+        io_uring_cqe_seen(&ring, cqe);
+        free(iovecvec);
+        return 0;
+    }
+
     // RandomAccessFileDummy::GetRequiredBufferAlignment seems implemented
     // RandomAccessFileDummy::Prefetch perhaps we can get away with not implementing it?
 
@@ -242,5 +358,75 @@ namespace rocksdb{
     // WritableFileDummy::SetWriteLifeTimeHint 
     // WritableFileDummy::Sync 
     // WritableFileDummy::use_direct_io 
+
+    IOStatus RandomAccessFileIou::Read(uint64_t offset, size_t n,
+                                     const IOOptions& /*opts*/, Slice* result,
+                                     char* scratch,
+                                     IODebugContext* /*dbg*/) const {
+        if (use_direct_io()) {
+            assert(IsSectorAligned(offset, GetRequiredBufferAlignment()));
+            assert(IsSectorAligned(n, GetRequiredBufferAlignment()));
+            assert(IsSectorAligned(scratch, GetRequiredBufferAlignment()));
+        }
+        IOStatus s;
+        ssize_t r = -1;
+        
+        std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing();
+        r = ring->get()->IouRingRead(n, result, scratch, logical_sector_size_, fd_, offset);
+        if (r < 0) {
+            // An error: return a non-ok status
+            return IOError("While random pread offset " + std::to_string(offset) + " len " +
+                            std::to_string(n),
+                        filename_, errno);
+        }
+        return s;
+    }
+    IOStatus SequentialFileIou::Read(size_t n, const IOOptions& /*opts*/,
+                                   Slice* result, char* scratch,
+                                   IODebugContext* /*dbg*/) {
+        
+        assert(result != nullptr && !use_direct_io());
+        IOStatus s = IOStatus::OK();
+        int r = 0;
+        // do {
+        //     clearerr(file_);
+        //     r = fread_unlocked(scratch, 1, n, file_);
+        // } while (r == 0 && ferror(file_) && errno == EINTR);
+        std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing();
+        r = ring->get()->IouRingRead(n, result, scratch, logical_sector_size_, fd_, currentByte);
+        if (r < 0) {
+            return IOError("While sequentially reading from", PosixSequentialFile::filename_, errno);
+        }
+        currentByte += result->size();
+        return s;
+        }
+
+    uint64_t getActualFileSize(int fd){
+        struct stat64 s;
+        fstat64(fd, &s);
+        return s.st_size;
+    }
+    
+    IOStatus WritableFileIou::Append(const Slice& data, const IOOptions& /*opts*/,
+                                   IODebugContext* /*dbg*/) {
+        
+        DTRACE_PROBE(iouengine, write);
+
+        if (use_direct_io()) {
+            assert(IsSectorAligned(data.size(), GetRequiredBufferAlignment()));
+            assert(IsSectorAligned(data.data(), GetRequiredBufferAlignment()));
+        }
+        uint64_t nbytes = data.size();
+        std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing();
+        // std::cout << "ring: " << ring->get() << " sector size: " << logical_sector_size_ << "\n";
+
+        if (ring->get()->IouRingWrite(data, fd_, logical_sector_size_) != 0) {
+            return IOError("While appending to file", PosixWritableFile::filename_, errno);
+        }
+
+        PosixWritableFile::filesize_ += nbytes;
+        
+        return IOStatus::OK();
+    }
 }
 
