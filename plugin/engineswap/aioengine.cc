@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <string>
 #include <sys/stat.h>
+#include <sys/sdt.h>
 #include <iostream>
 #include <sys/statfs.h>
 #include "engineswap.h"
@@ -378,6 +379,7 @@ namespace rocksdb{
                                      const IOOptions& /*opts*/, Slice* result,
                                      char* scratch,
                                      IODebugContext* /*dbg*/) const {
+        DTRACE_PROBE(libaio, rdread);
         if (use_direct_io()) {
             assert(IsSectorAligned(offset, GetRequiredBufferAlignment()));
             assert(IsSectorAligned(n, GetRequiredBufferAlignment()));
@@ -399,7 +401,7 @@ namespace rocksdb{
     IOStatus SequentialFileAio::Read(size_t n, const IOOptions& /*opts*/,
                                    Slice* result, char* scratch,
                                    IODebugContext* /*dbg*/) {
-        
+        DTRACE_PROBE(libaio, sqread);
         assert(result != nullptr && !use_direct_io());
         IOStatus s = IOStatus::OK();
         int r = 0;
@@ -418,7 +420,7 @@ namespace rocksdb{
 
     IOStatus WritableFileAio::Append(const Slice& data, const IOOptions& /*opts*/,
                                    IODebugContext* /*dbg*/) {
-        
+        DTRACE_PROBE(libaio, write);
        // std::cerr << "Append called\n";
         if (use_direct_io()) {
             assert(IsSectorAligned(data.size(), GetRequiredBufferAlignment()));

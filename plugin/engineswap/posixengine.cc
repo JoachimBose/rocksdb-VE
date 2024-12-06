@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <string>
 #include <sys/stat.h>
+#include <sys/sdt.h>
 #include <iostream>
 #include <sys/statfs.h>
 
@@ -216,6 +217,116 @@ namespace rocksdb{
                            IODebugContext* dbg)
     {
         return OpenWritableFilePosix(fname, options, false, result, dbg);
+    }
+
+    IOStatus RandomAccessFilePosix::Read(uint64_t offset, size_t n,
+                                     const IOOptions& /*opts*/, Slice* result,
+                                     char* scratch,
+                                     IODebugContext* /*dbg*/) const {
+        DTRACE_PROBE(posix, rdread);   
+        if (use_direct_io()) {
+            assert(IsSectorAligned(offset, GetRequiredBufferAlignment()));
+            assert(IsSectorAligned(n, GetRequiredBufferAlignment()));
+            assert(IsSectorAligned(scratch, GetRequiredBufferAlignment()));
+        }
+        IOStatus s;
+        ssize_t r = -1;
+        size_t left = n;
+        char* ptr = scratch;
+        while (left > 0) {
+            r = pread(fd_, ptr, left, static_cast<off_t>(offset));
+            if (r <= 0) {
+            if (r == -1 && errno == EINTR) {
+                continue;
+            }
+            break;
+            }
+            ptr += r;
+            offset += r;
+            left -= r;
+            if (use_direct_io() &&
+                r % static_cast<ssize_t>(GetRequiredBufferAlignment()) != 0) {
+            // Bytes reads don't fill sectors. Should only happen at the end
+            // of the file.
+            break;
+            }
+        }
+        if (r < 0) {
+            // An error: return a non-ok status
+            s = IOError("While pread offset " + std::to_string(offset) + " len " +
+                            std::to_string(n),
+                        filename_, errno);
+        }
+        *result = Slice(scratch, (r < 0) ? 0 : n - left);
+        return s;                             
+        
+    }
+    IOStatus SequentialFilePosix::Read(size_t n, const IOOptions& /*opts*/,
+                                   Slice* result, char* scratch,
+                                   IODebugContext* /*dbg*/) {
+        DTRACE_PROBE(posix, sqread);
+        assert(result != nullptr && !use_direct_io());
+        IOStatus s;
+        size_t r = 0;
+        do {
+            clearerr(file_);
+            r = fread_unlocked(scratch, 1, n, file_);
+        } while (r == 0 && ferror(file_) && errno == EINTR);
+        *result = Slice(scratch, r);
+        if (r < n) {
+            if (feof(file_)) {
+            // We leave status as ok if we hit the end of the file
+            // We also clear the error so that the reads can continue
+            // if a new data is written to the file
+            clearerr(file_);
+            } else {
+            // A partial read with an error: return a non-ok status
+            s = IOError("While reading file sequentially", filename_, errno);
+            }
+        }
+        return s;   
+    }
+
+    bool PosixWriteCustom(int fd, const char* buf, size_t nbyte) {
+        const size_t kLimit1Gb = 1UL << 30;
+
+        const char* src = buf;
+        size_t left = nbyte;
+
+        while (left != 0) {
+            size_t bytes_to_write = std::min(left, kLimit1Gb);
+
+            ssize_t done = write(fd, src, bytes_to_write);
+            if (done < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return false;
+            }
+            left -= done;
+            src += done;
+        }
+        return true;
+    }
+    
+    IOStatus WritableFilePosix::Append(const Slice& data, const IOOptions& /*opts*/,
+                                   IODebugContext* /*dbg*/) {
+        
+        DTRACE_PROBE(posix, write);
+
+        if (use_direct_io()) {
+            assert(IsSectorAligned(data.size(), GetRequiredBufferAlignment()));
+            assert(IsSectorAligned(data.data(), GetRequiredBufferAlignment()));
+        }
+        const char* src = data.data();
+        size_t nbytes = data.size();
+
+        if (!PosixWriteCustom(fd_, src, nbytes)) {
+            return IOError("While appending to file", filename_, errno);
+        }
+
+        filesize_ += nbytes;
+        return IOStatus::OK();
     }
     // RandomAccessFileDummy::GetRequiredBufferAlignment seems implemented
     // RandomAccessFileDummy::Prefetch perhaps we can get away with not implementing it?

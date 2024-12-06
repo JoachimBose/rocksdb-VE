@@ -36,6 +36,8 @@ class RandomAccessFilePosix : public PosixRandomAccessFile {
   {
 
   }
+   IOStatus Read(uint64_t offset, size_t n, const IOOptions& opts, Slice* result,
+                char* scratch, IODebugContext* dbg) const override;
 };
 
 class SequentialFilePosix : public PosixSequentialFile {
@@ -46,6 +48,8 @@ class SequentialFilePosix : public PosixSequentialFile {
   {
 
   }
+  IOStatus Read(size_t n, const IOOptions& opts, Slice* result, char* scratch,
+                IODebugContext* dbg) override;
 };
 
 class WritableFilePosix : public PosixWritableFile {
@@ -56,6 +60,8 @@ class WritableFilePosix : public PosixWritableFile {
   {
 
   }
+  IOStatus Append(const Slice& data, const IOOptions& /*opts*/,
+                                   IODebugContext* /*dbg*/) override;
 };
 
 }
