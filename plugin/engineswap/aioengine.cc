@@ -416,12 +416,6 @@ namespace rocksdb{
         return s;
         }
 
-    uint64_t getActualFileSize(int fd){
-        struct stat64 s;
-        fstat64(fd, &s);
-        return s.st_size;
-    }
-    
     IOStatus WritableFileAio::Append(const Slice& data, const IOOptions& /*opts*/,
                                    IODebugContext* /*dbg*/) {
         

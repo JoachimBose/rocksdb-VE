@@ -39,6 +39,7 @@ FactoryFunc<FileSystem> engineswap_reg =
     }
     
     return &aioRing;
+  }
     
   std::unique_ptr<IouRing>* EngineSwapFileSystem::getRing(){
     if (ring.get() == nullptr)
