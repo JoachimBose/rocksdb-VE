@@ -234,7 +234,7 @@ class LogicalBlockSizeCache {
 #endif
 
 class PosixSequentialFile : public FSSequentialFile {
- private:
+ protected:
   std::string filename_;
   FILE* file_;
   int fd_;
