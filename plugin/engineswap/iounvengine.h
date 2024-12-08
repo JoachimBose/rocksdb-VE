@@ -1,12 +1,11 @@
-#ifndef ENGINESWAP_IOURING
-#define ENGINESWAP_IOURING
+#ifndef ENGINESWAP_IOURINGNV
+#define ENGINESWAP_IOURINGNV
 
 #include "rocksdb/file_system.h"
 #include "rocksdb/io_status.h"
 #include "env/io_posix.h"
 #include "rocksdb/env.h"
 #include "util/thread_local.h"
-#include "io_util.h"
 #include <liburing.h>
 #include <iostream>
 
@@ -14,24 +13,24 @@
 
 namespace ROCKSDB_NAMESPACE {
 
-IOStatus NewRandomAccessFileIou(const std::string& f, 
+IOStatus NewRandomAccessFileIouNv(const std::string& f, 
                            const FileOptions& file_opts,
                            std::unique_ptr<FSRandomAccessFile>* r,
                            IODebugContext* dbg);
 
-IOStatus NewSequentialFileIou(const std::string& f, 
+IOStatus NewSequentialFileIouNv(const std::string& f, 
                           const FileOptions& file_opts,
                           std::unique_ptr<FSSequentialFile>* r,
                           IODebugContext* dbg);
 
-IOStatus NewWritableFileIou(const std::string& f, 
+IOStatus NewWritableFileIouNv(const std::string& f, 
                           const FileOptions& file_opts,
                           std::unique_ptr<FSWritableFile>* r,
                           IODebugContext* dbg);
 
-class RandomAccessFileIou : public PosixRandomAccessFile {
+class RandomAccessFileIouNv : public PosixRandomAccessFile {
  public:
-  RandomAccessFileIou(const std::string& fname, int nfd,
+  RandomAccessFileIouNv(const std::string& fname, int nfd,
                         size_t nlogical_block_size, const EnvOptions& noptions) :
                         PosixRandomAccessFile(fname, nfd, nlogical_block_size, noptions
 #if defined(ROCKSDB_IOURING_PRESENT)
@@ -47,11 +46,11 @@ class RandomAccessFileIou : public PosixRandomAccessFile {
                 char* scratch, IODebugContext* dbg) const override;
 };
 
-class SequentialFileIou : public PosixSequentialFile {
+class SequentialFileIouNv : public PosixSequentialFile {
  protected:
   off64_t currentByte;
  public:
-  SequentialFileIou(const std::string& fname, FILE* nfile, int nfd,
+  SequentialFileIouNv(const std::string& fname, FILE* nfile, int nfd,
                       size_t nlogical_block_size, const EnvOptions& noptions) :
                       PosixSequentialFile(fname, nfile, nfd, nlogical_block_size, noptions)
   {
@@ -61,16 +60,16 @@ class SequentialFileIou : public PosixSequentialFile {
                 IODebugContext* dbg) override;
 };
 
-class WritableFileIou : public PosixWritableFile {
+class WritableFileIouNv : public PosixWritableFile {
  
   
  public:
-  WritableFileIou(const std::string& fname, int nfd,
+  WritableFileIouNv(const std::string& fname, int nfd,
                     size_t nlogical_block_size, const EnvOptions& noptions) :
                     PosixWritableFile(fname, nfd, nlogical_block_size, noptions)
   {
   }
-  ~WritableFileIou(){
+  ~WritableFileIouNv(){
     // PosixWritableFile::~PosixWritableFile();
   }
   using PosixWritableFile::Append;

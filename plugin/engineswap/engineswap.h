@@ -8,6 +8,7 @@
 #include "aioengine.h"
 #include "iouengine.h"
 #include "posixengine.h"
+#include "iounvengine.h"
 #include "filedummies.h"
 
 #include "rocksdb/file_system.h"

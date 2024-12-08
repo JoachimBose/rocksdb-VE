@@ -8,6 +8,7 @@
 #define URI_POSIX "posix"
 #define URI_IOU "io_uring"
 #define URI_AIO "libaio"
+#define URI_IOUNV "io_uring_nv"
 #define URI_DUMMY "dummy"
 
 namespace ROCKSDB_NAMESPACE {
@@ -65,6 +66,10 @@ FactoryFunc<FileSystem> engineswap_reg =
     else if (nengine_type.compare(URI_IOU) == 0){
       setEngineType(Iou)
       std::cout << "Selected api is IO_URING, the fan favorite backend :) \n";
+    }
+    else if (nengine_type.compare(URI_IOUNV) == 0){
+      setEngineType(IouNv)
+      std::cout << "Selected api is IO_URING NO VECTORISER, the highly anticipated (non)sequel :) \n";
     }
     else if (nengine_type.compare(URI_AIO) == 0){
       setEngineType(Aio)

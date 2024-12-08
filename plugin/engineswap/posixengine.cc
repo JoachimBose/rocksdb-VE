@@ -216,7 +216,7 @@ namespace rocksdb{
                            std::unique_ptr<FSWritableFile>* result,
                            IODebugContext* dbg)
     {
-        return OpenWritableFilePosix(fname, options, false, result, dbg);
+        return OpenWritableFilePosix(fname, options, true, result, dbg);
     }
 
     IOStatus RandomAccessFilePosix::Read(uint64_t offset, size_t n,
