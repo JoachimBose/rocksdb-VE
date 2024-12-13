@@ -251,6 +251,7 @@ namespace rocksdb{
             break;
             }
         }
+        DTRACE_PROBE(posix, rdread_end);
         if (r < 0) {
             // An error: return a non-ok status
             s = IOError("While pread offset " + std::to_string(offset) + " len " +
@@ -284,6 +285,7 @@ namespace rocksdb{
             s = IOError("While reading file sequentially", filename_, errno);
             }
         }
+        DTRACE_PROBE(posix, sqread_end);
         return s;   
     }
 
@@ -324,7 +326,7 @@ namespace rocksdb{
         if (!PosixWriteCustom(fd_, src, nbytes)) {
             return IOError("While appending to file", filename_, errno);
         }
-
+        DTRACE_PROBE(posix, write_end);
         filesize_ += nbytes;
         return IOStatus::OK();
     }

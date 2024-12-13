@@ -257,6 +257,7 @@ namespace rocksdb{
         std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing();
         DTRACE_PROBE(io_uring, rdread);
         r = ring->get()->IouRingRead(n, result, scratch, logical_sector_size_, fd_, offset);
+        DTRACE_PROBE(io_uring, rdread_end);
         if (r < 0) {
             // An error: return a non-ok status
             return IOError("While random pread offset " + std::to_string(offset) + " len " +
@@ -278,12 +279,15 @@ namespace rocksdb{
         // } while (r == 0 && ferror(file_) && errno == EINTR);
         std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing();
         r = ring->get()->IouRingRead(n, result, scratch, logical_sector_size_, fd_, currentByte);
+        DTRACE_PROBE(io_uring, sqread_end);
         if (r < 0) {
             return IOError("While sequentially reading from", PosixSequentialFile::filename_, errno);
         }
         currentByte += result->size();
+        
         return s;
-        }
+    }
+    
 
     uint64_t getActualFileSize(int fd){
         struct stat64 s;
@@ -307,7 +311,7 @@ namespace rocksdb{
         if (ring->get()->IouRingWrite(data, fd_, logical_sector_size_) != 0) {
             return IOError("While appending to file", PosixWritableFile::filename_, errno);
         }
-
+        DTRACE_PROBE(io_uring, write_end);
         PosixWritableFile::filesize_ += nbytes;
         
         return IOStatus::OK();
