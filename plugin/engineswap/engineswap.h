@@ -9,6 +9,7 @@
 #include "iouengine.h"
 #include "posixengine.h"
 #include "iounvengine.h"
+#include "iounvsqpengine.h"
 #include "filedummies.h"
 
 #include "rocksdb/file_system.h"
@@ -45,7 +46,7 @@ namespace ROCKSDB_NAMESPACE {
     public:
         const char* Name() const override;
         static std::unique_ptr<AioRing>* getAioRing();        
-        static std::unique_ptr<IouRing>* getRing();
+        static std::unique_ptr<IouRing>* getRing(bool doSqp);
 
         EngineSwapFileSystem(std::shared_ptr<FileSystem> t, std::string nengine_type);
         IOStatus NewSequentialFile(const std::string& f, const FileOptions& file_opts,

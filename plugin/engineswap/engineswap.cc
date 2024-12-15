@@ -9,6 +9,7 @@
 #define URI_IOU "io_uring"
 #define URI_AIO "libaio"
 #define URI_IOUNV "io_uring_nv"
+#define URI_IOUNVSQP "io_uring_nv_sqp"
 #define URI_DUMMY "dummy"
 
 namespace ROCKSDB_NAMESPACE {
@@ -42,10 +43,10 @@ FactoryFunc<FileSystem> engineswap_reg =
     return &aioRing;
   }
     
-  std::unique_ptr<IouRing>* EngineSwapFileSystem::getRing(){
+  std::unique_ptr<IouRing>* EngineSwapFileSystem::getRing(bool doSqp){
     if (ring.get() == nullptr)
     {
-      ring.reset(new IouRing());
+      ring.reset(new IouRing(doSqp));
     }
     
     return &ring;
@@ -70,6 +71,10 @@ FactoryFunc<FileSystem> engineswap_reg =
     else if (nengine_type.compare(URI_IOUNV) == 0){
       setEngineType(IouNv)
       std::cout << "Selected api is IO_URING NO VECTORISER, the highly anticipated (non)sequel :) \n";
+    }
+    else if (nengine_type.compare(URI_IOUNVSQP) == 0){
+      setEngineType(IouNvSqp)
+      std::cout << "Selected api is IO_URING with submission queue polling, the last ending that fucks up the whole trilogy \n";
     }
     else if (nengine_type.compare(URI_AIO) == 0){
       setEngineType(Aio)

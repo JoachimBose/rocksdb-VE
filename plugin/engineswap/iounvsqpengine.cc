@@ -1,4 +1,4 @@
-#include "iounvengine.h"
+#include "iounvsqpengine.h"
 #include "filedummies.h"
 #include "filealarms.h"
 #include "util.h"
@@ -28,7 +28,7 @@ namespace rocksdb{
     //uncomment these to make some warnings :)
 
     
-    IOStatus NewRandomAccessFileIouNv(const std::string& fname,
+    IOStatus NewRandomAccessFileIouNvSqp(const std::string& fname,
                                const FileOptions& options,
                                std::unique_ptr<FSRandomAccessFile>* result,
                                IODebugContext* /*dbg*/)
@@ -80,14 +80,14 @@ namespace rocksdb{
         if (options.use_direct_reads && !options.use_mmap_reads) {
 
         }
-        result->reset(new RandomAccessFileAlarm(new RandomAccessFileIouNv(
+        result->reset(new RandomAccessFileAlarm(new RandomAccessFileIouNvSqp(
             fname, fd, GetLogicalBlockSizeForReadIfNeeded(options, fname, fd),
             options)));
         }
         return s;
     }
 
-    IOStatus OpenWritableFileIouNv(const std::string& fname,
+    IOStatus OpenWritableFileIouNvSqp(const std::string& fname,
                                     const FileOptions& options, bool reopen,
                                     std::unique_ptr<FSWritableFile>* result,
                                     IODebugContext* /*dbg*/) {
@@ -151,7 +151,7 @@ namespace rocksdb{
             }
         }
     #endif
-        result->reset(new WritableFileAlarm(new WritableFileIouNv(
+        result->reset(new WritableFileAlarm(new WritableFileIouNvSqp(
             fname, fd, GetLogicalBlockSizeForWriteIfNeeded(options, fname, fd),
             options)));
         } else {
@@ -159,7 +159,7 @@ namespace rocksdb{
             EnvOptions no_mmap_writes_options = options;
             no_mmap_writes_options.use_mmap_writes = false;
             result->reset(
-                new WritableFileAlarm (new WritableFileIouNv(fname, fd,
+                new WritableFileAlarm (new WritableFileIouNvSqp(fname, fd,
                                         GetLogicalBlockSizeForWriteIfNeeded(
                                             no_mmap_writes_options, fname, fd),
                                         no_mmap_writes_options)));
@@ -167,7 +167,7 @@ namespace rocksdb{
         return s;
     }
 
-    IOStatus NewSequentialFileIouNv(const std::string& fname,
+    IOStatus NewSequentialFileIouNvSqp(const std::string& fname,
                              const FileOptions& options,
                              std::unique_ptr<FSSequentialFile>* result,
                              IODebugContext* /*dbg*/)
@@ -209,17 +209,17 @@ namespace rocksdb{
                         errno);
         }
         }
-        result->reset(new SequentialFileAlarm(new SequentialFileIouNv(
+        result->reset(new SequentialFileAlarm(new SequentialFileIouNvSqp(
             fname, file, fd, GetLogicalBlockSizeForReadIfNeeded(options, fname, fd),
             options)));
         return IOStatus::OK();   
     }
 
-    IOStatus NewWritableFileIouNv(const std::string& fname, const FileOptions& options,
+    IOStatus NewWritableFileIouNvSqp(const std::string& fname, const FileOptions& options,
                            std::unique_ptr<FSWritableFile>* result,
                            IODebugContext* dbg)
     {
-        return OpenWritableFileIouNv(fname, options, true, result, dbg); //modified reopen
+        return OpenWritableFileIouNvSqp(fname, options, true, result, dbg); //modified reopen
     }
 
     // RandomAccessFileDummy::GetRequiredBufferAlignment seems implemented
@@ -242,7 +242,7 @@ namespace rocksdb{
     // WritableFileDummy::Sync 
     // WritableFileDummy::use_direct_io 
 
-    IOStatus RandomAccessFileIouNv::Read(uint64_t offset, size_t n,
+    IOStatus RandomAccessFileIouNvSqp::Read(uint64_t offset, size_t n,
                                      const IOOptions& /*opts*/, Slice* result,
                                      char* scratch,
                                      IODebugContext* /*dbg*/) const {
@@ -254,7 +254,7 @@ namespace rocksdb{
         IOStatus s;
         ssize_t r = -1;
         
-        std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing(false);
+        std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing(true);
         DTRACE_PROBE(io_uring_nv, rdread);
         r = ring->get()->IouNvRingRead(n, result, scratch, fd_, offset);
         DTRACE_PROBE(io_uring_nv, rdread_end);
@@ -266,7 +266,7 @@ namespace rocksdb{
         }
         return s;
     }
-    IOStatus SequentialFileIouNv::Read(size_t n, const IOOptions& /*opts*/,
+    IOStatus SequentialFileIouNvSqp::Read(size_t n, const IOOptions& /*opts*/,
                                    Slice* result, char* scratch,
                                    IODebugContext* /*dbg*/) {
         DTRACE_PROBE(io_uring_nv, sqread);
@@ -277,7 +277,7 @@ namespace rocksdb{
         //     clearerr(file_);
         //     r = fread_unlocked(scratch, 1, n, file_);
         // } while (r == 0 && ferror(file_) && errno == EINTR);
-        std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing(false);
+        std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing(true);
         r = ring->get()->IouNvRingRead(n, result, scratch, fd_, currentByte);
         DTRACE_PROBE(io_uring_nv, sqread_end);
         if (r < 0) {
@@ -287,7 +287,7 @@ namespace rocksdb{
         return s;
         }
     
-    IOStatus WritableFileIouNv::Append(const Slice& data, const IOOptions& /*opts*/,
+    IOStatus WritableFileIouNvSqp::Append(const Slice& data, const IOOptions& /*opts*/,
                                    IODebugContext* /*dbg*/) {
         
         DTRACE_PROBE(io_uring_nv, write);
@@ -297,7 +297,7 @@ namespace rocksdb{
             assert(IsSectorAligned(data.data(), GetRequiredBufferAlignment()));
         }
         uint64_t nbytes = data.size();
-        std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing(false);
+        std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing(true);
         // std::cout << "ring: " << ring->get() << " sector size: " << logical_sector_size_ << "\n";
 
         if (ring->get()->IouNvRingWrite(data, fd_) != 0) {

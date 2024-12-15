@@ -254,7 +254,7 @@ namespace rocksdb{
         IOStatus s;
         ssize_t r = -1;
         
-        std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing();
+        std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing(false);
         DTRACE_PROBE(io_uring, rdread);
         r = ring->get()->IouRingRead(n, result, scratch, logical_sector_size_, fd_, offset);
         DTRACE_PROBE(io_uring, rdread_end);
@@ -277,7 +277,7 @@ namespace rocksdb{
         //     clearerr(file_);
         //     r = fread_unlocked(scratch, 1, n, file_);
         // } while (r == 0 && ferror(file_) && errno == EINTR);
-        std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing();
+        std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing(false);
         r = ring->get()->IouRingRead(n, result, scratch, logical_sector_size_, fd_, currentByte);
         DTRACE_PROBE(io_uring, sqread_end);
         if (r < 0) {
@@ -305,7 +305,7 @@ namespace rocksdb{
             assert(IsSectorAligned(data.data(), GetRequiredBufferAlignment()));
         }
         uint64_t nbytes = data.size();
-        std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing();
+        std::unique_ptr<IouRing>* ring = EngineSwapFileSystem::getRing(false);
         // std::cout << "ring: " << ring->get() << " sector size: " << logical_sector_size_ << "\n";
 
         if (ring->get()->IouRingWrite(data, fd_, logical_sector_size_) != 0) {

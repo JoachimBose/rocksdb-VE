@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <iostream>
 #include "rocksdb/slice.h"
 
 #define QUEUE_ITEMS 4
@@ -11,14 +12,14 @@ namespace rocksdb
     class IouRing{
     struct io_uring ring;
     public:
-    IouRing(){
+    IouRing(bool doSqp = false){
         struct io_uring_params params;
-
         memset(&params, 0, sizeof(params));
-        params.flags |= IORING_SETUP_SQPOLL;
-        // params.flags |= IORING_SETUP_IOPOLL;
-        params.sq_thread_idle = 5000;
-
+        if(doSqp){
+            params.flags |= IORING_SETUP_SQPOLL;
+            // params.flags |= IORING_SETUP_IOPOLL;
+            params.sq_thread_idle = 5000;
+        }
         int ret = io_uring_queue_init_params(QUEUE_ITEMS, &ring, &params);
 
         if(ret != 0){
