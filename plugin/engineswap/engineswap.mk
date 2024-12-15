@@ -1,3 +1,3 @@
-engineswap_SOURCES = engineswap.cc aioengine.cc posixengine.cc iouengine.cc filedummies.cc util.cc
-engineswap_HEADERS = engineswap.h aioengine.h posixengine.h iouengine.h filedummies.h util.h
-engineswap_LDFLAGS = -lcrypto -u engineswap_reg
+engineswap_SOURCES = engineswap.cc aioengine.cc posixengine.cc iouengine.cc filedummies.cc util.cc filealarms.cc iounvengine.cc io_util.cc iounvsqpengine.cc
+engineswap_HEADERS = engineswap.h aioengine.h posixengine.h iouengine.h filedummies.h util.h filealarms.h iounvengine.h io_util.h iounvsqpengine.h
+engineswap_LDFLAGS = -lcrypto -laio -u engineswap_reg
