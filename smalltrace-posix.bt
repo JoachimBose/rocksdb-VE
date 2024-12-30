@@ -1,0 +1,120 @@
+#!/usr/bin/bpftrace
+
+BEGIN
+{
+    @total_samples = 0;
+    @OpsPerformed = 360; //no scope 
+}
+
+usdt:/home/user/rocksdb-VE/db_bench:io_uring:write,
+usdt:/home/user/rocksdb-VE/db_bench:libaio:write,
+usdt:/home/user/rocksdb-VE/db_bench:io_uring_nv:write
+{
+    //printf("WARNING engine mismatch\n");
+}
+
+usdt:/home/user/rocksdb-VE/db_bench:posix:write
+{
+    // Store the current timestamp in nanoseconds
+    @start = nsecs;
+    @currentTid = tid;
+    @OpsPerformed = 0;
+    //printf("starting clock! %s\n", comm);
+}
+
+//lhist (n, min, max, step)
+
+kprobe:vfs_write
+{
+    if(@OpsPerformed == 0){
+        //printf("    [0] reached vfs_write at: %d - %s \n", nsecs - @start, comm);
+        @sys_enter_Hist = hist(nsecs - @start);
+        @sys_enter_Lhist = lhist(nsecs - @start, 0, 10000, 500);
+        @sys_enter_Stats = stats(nsecs - @start);
+        @sys_enter = nsecs;
+        @OpsPerformed = @OpsPerformed + 1;
+    }
+    
+}
+
+kprobe:xfs_file_write_iter
+{
+    if(@OpsPerformed == 1){
+        //printf("    [1] ext4_write_iter_called at: %d - %s\n", nsecs - @sys_enter, comm);
+        @xfs_write_starts_Hist = hist(nsecs - @sys_enter);
+        @xfs_write_starts_Lhist = lhist(nsecs - @sys_enter, 0, 30000, 1500);
+        @xfs_write_starts_Stats = stats(nsecs - @sys_enter);
+        @fs_write_start = nsecs;
+        @OpsPerformed = @OpsPerformed + 1;
+    }
+    
+}
+
+kretprobe:xfs_file_write_iter
+{
+    if(@OpsPerformed == 2){
+        //printf("    [2] ext4_write_iter_end at: %d - %s\n", nsecs - @fs_write_start, comm);
+        @xfs_write_end_Hist = hist(nsecs - @fs_write_start);
+        @xfs_write_end_Lhist = lhist(nsecs - @fs_write_start, 250000, 2000000,50000);
+        @xfs_write_end_Stats = stats(nsecs - @fs_write_start);
+        @fs_write_end = nsecs;
+        @OpsPerformed = @OpsPerformed + 1;
+    }
+    
+}
+
+kprobe:ext4_file_write_iter
+{
+    if(@OpsPerformed == 1){
+        //printf("    [1] ext4_write_iter_called at: %d - %s\n", nsecs - @sys_enter, comm);
+        @ext4_write_starts_Hist = hist(nsecs - @sys_enter);
+        @ext4_write_starts_Lhist = lhist(nsecs - @sys_enter, 0, 30000, 1500);
+        @ext4_write_starts_Stats = stats(nsecs - @sys_enter);
+        @fs_write_start = nsecs;
+        @OpsPerformed = @OpsPerformed + 1;
+    }
+    
+}
+
+kretprobe:ext4_file_write_iter
+{
+    if(@OpsPerformed == 2){
+        //printf("    [2] ext4_write_iter_end at: %d - %s\n", nsecs - @fs_write_start, comm);
+        @ext4_write_end_Hist = hist(nsecs - @fs_write_start);
+        @ext4_write_end_Lhist = lhist(nsecs - @fs_write_start, 250000, 2000000,50000);
+        @ext4_write_end_Stats = stats(nsecs - @fs_write_start);
+        @fs_write_end = nsecs;
+        @OpsPerformed = @OpsPerformed + 1;
+    }
+    
+}
+
+usdt:/home/user/rocksdb-VE/db_bench:io_uring:write_end,
+usdt:/home/user/rocksdb-VE/db_bench:io_uring_nv:write_end,
+usdt:/home/user/rocksdb-VE/db_bench:libaio:write_end,
+usdt:/home/user/rocksdb-VE/db_bench:posix:write_end
+{
+    if(@OpsPerformed == 3){
+        //printf("    [3] back in userspace at: %d - %s\n", nsecs - @fs_write_end, comm);
+        @back_in_uspace_Hist = hist(nsecs - @fs_write_end);
+        @back_in_uspace_Lhist = lhist(nsecs - @fs_write_end, 0, 16000, 1000);
+        @back_in_uspace_Stats = stats(nsecs - @fs_write_end);
+        @back_in_uspace = nsecs;
+        
+        @total_hist = hist(nsecs - @start);
+        @total_Lhist = lhist(nsecs - @start, 0, 2000000,100000);
+        @total_stats = stats(nsecs - @start);
+    }
+    else{
+        //printf("failed to find all ops, we got to %d \n", @OpsPerformed);
+    }
+
+    //@total_samples = @total_samples + 1;
+    //if(@total_samples == 20){
+    //    exit();
+    //}
+}
+
+kprobe:io_init_new_worker{
+    @times_called[tid] = count();
+}

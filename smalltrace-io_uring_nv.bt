@@ -1,0 +1,178 @@
+#!/usr/bin/bpftrace
+
+BEGIN
+{
+    @total_samples = 0;
+    @OpsPerformed = 360; //no scope 
+}
+
+//usdt:/home/user/rocksdb-VE/db_bench:io_uring:write,
+//usdt:/home/user/rocksdb-VE/db_bench:libaio:write,
+//usdt:/home/user/rocksdb-VE/db_bench:posix:write,
+usdt:/home/user/rocksdb-VE/db_bench:io_uring_nv:write
+{
+    // Store the current timestamp in nanoseconds
+    @start = nsecs;
+    @currentTid = tid;
+    @OpsPerformed = 0;
+    //printf("starting clock! %s\n", comm);
+}
+
+//lhist (n, min, max, step)
+
+kprobe:fget
+{
+    if(@OpsPerformed == 0){
+        //printf("    [0] reached fget at: %d - %s \n", nsecs - @start, comm);
+        //@sys_enter_Hist = hist(nsecs - @start);
+        @sys_enter_Lhist = lhist(nsecs - @start, 0, 10000, 500);
+        @sys_enter_Stats = stats(nsecs - @start);
+        @fgetArrival = nsecs;
+        @OpsPerformed = @OpsPerformed + 1;
+    }
+    
+}
+
+kretprobe:io_submit_sqes
+{
+    if(@OpsPerformed == 1){
+        //printf("    [1] finished submitting sqe at: %d - %s\n", nsecs - @fgetArrival, comm);
+        //@io_sqe_processing_Hist = hist(nsecs - @fgetArrival);
+        @io_sqe_processing_Lhist = lhist(nsecs - @fgetArrival,0,26000,1000);
+        @io_sqe_processing_Stats = stats(nsecs - @fgetArrival);
+        @io_submit_sqes_ret = nsecs;
+        @OpsPerformed = @OpsPerformed + 1;
+    }
+    
+}
+
+//kprobe:io_wq_activate_free_worker
+//{
+//    if(@OpsPerformed == 2){
+//        //printf("    [2] finished submitting wq task at: %d - %s\n", nsecs - @io_submit_sqes_ret, comm);
+////        @wq_enqueuing_Hist = hist(nsecs - @io_submit_sqes_ret);
+//        @wq_enqueuing_Stats = stats(nsecs - @io_submit_sqes_ret);
+//        @io_wq_afw_arrival = nsecs;
+//        //@OpsPerformed = @OpsPerformed + 1;
+//    }
+//    
+//}
+
+kprobe:io_worker_handle_work
+{
+    if(@OpsPerformed == 2){
+        //printf("    [2] worker starts processing wq task at: %d - %s\n", nsecs - @io_submit_sqes_ret, comm);
+        //@woke_up_Hist = hist(nsecs - @io_submit_sqes_ret);
+        @woke_up_Lhist = lhist(nsecs - @io_submit_sqes_ret, 0, 80000, 2500);
+        @woke_up_Stats = stats(nsecs - @io_submit_sqes_ret);
+        @woke_up_time = nsecs;
+        @OpsPerformed = @OpsPerformed + 1;
+    }
+}
+
+kprobe:ext4_file_write_iter
+{
+    if(@OpsPerformed == 3){
+        //printf("    [3] ext4_write_iter_called at: %d - %s\n", nsecs - @woke_up_time, comm);
+        //@fs_write_starts_Hist = hist(nsecs - @woke_up_time);
+        @ext4_write_starts_Lhist = lhist(nsecs - @woke_up_time, 0, 30000, 1500);
+        @ext4_write_starts_Stats = stats(nsecs - @woke_up_time);
+        @fs_write_start = nsecs;
+        @OpsPerformed = @OpsPerformed + 1;
+    }
+    
+}
+
+kretprobe:ext4_file_write_iter
+{
+    if(@OpsPerformed == 4){
+        //printf("    [4] ext4_write_iter_end at: %d - %s\n", nsecs - @fs_write_start, comm);
+        //@fs_write_end_Hist = hist(nsecs - @fs_write_start);
+        @ext4_write_end_Lhist = lhist(nsecs - @fs_write_start, 500000, 2000000,50000);
+        @ext4_write_end_Stats = stats(nsecs - @fs_write_start);
+        @fs_write_end = nsecs;
+        @OpsPerformed = @OpsPerformed + 1;
+    }
+}
+
+kprobe:xfs_file_write_iter
+{
+    if(@OpsPerformed == 3){
+        //printf("    [3] ext4_write_iter_called at: %d - %s\n", nsecs - @woke_up_time, comm);
+        //@fs_write_starts_Hist = hist(nsecs - @woke_up_time);
+        @xfs_write_starts_Lhist = lhist(nsecs - @woke_up_time, 0, 30000, 1500);
+        @xfs_write_starts_Stats = stats(nsecs - @woke_up_time);
+        @fs_write_start = nsecs; //this one should be kept the same
+        @OpsPerformed = @OpsPerformed + 1;
+    }
+    
+}
+
+
+kretprobe:xfs_file_write_iter
+{
+    if(@OpsPerformed == 4){
+        //printf("    [4] ext4_write_iter_end at: %d - %s\n", nsecs - @fs_write_start, comm);
+        //@fs_write_end_Hist = hist(nsecs - @fs_write_start);
+        @xfs_write_end_Lhist = lhist(nsecs - @fs_write_start, 500000, 2000000,50000);
+        @xfs_write_end_Stats = stats(nsecs - @fs_write_start);
+        @fs_write_end = nsecs;
+        @OpsPerformed = @OpsPerformed + 1;
+    }
+}
+
+kretprobe:kiocb_done
+{
+    if(@OpsPerformed == 5){
+        //printf("    [5] kiocb_done finished at: %d - %s\n", nsecs - @fs_write_end, comm);
+        //@cleanup_done_Hist = hist(nsecs - @fs_write_end);
+        @cleanup_done_Lhist = lhist(nsecs - @fs_write_end, 0, 8000, 500);
+        @cleanup_done_Stats = stats(nsecs - @fs_write_end);
+        @cleanup_done = nsecs;
+        @OpsPerformed = @OpsPerformed + 1;
+    }
+    
+}
+
+kprobe:finish_wait
+{
+    if(@OpsPerformed == 6){
+        //printf("    [6] app-thread realised its done at: %d - %s\n", nsecs - @cleanup_done, comm);
+        //@finished_wait_Hist = hist(nsecs - @cleanup_done);
+        @finished_wait_Lhist = lhist(nsecs - @cleanup_done, 0, 128000, 5000);  
+        @finished_wait_Stats = stats(nsecs - @cleanup_done);
+        @finished_wait = nsecs;
+        @OpsPerformed = @OpsPerformed + 1;
+    }
+    
+}
+
+usdt:/home/user/rocksdb-VE/db_bench:io_uring:write_end,
+usdt:/home/user/rocksdb-VE/db_bench:io_uring_nv:write_end,
+usdt:/home/user/rocksdb-VE/db_bench:libaio:write_end,
+usdt:/home/user/rocksdb-VE/db_bench:posix:write_end
+{
+    if(@OpsPerformed == 7){
+        //printf("    [7] back in userspace at: %d - %s\n", nsecs - @finished_wait, comm);
+        //@back_in_uspace_Hist = hist(nsecs - @finished_wait);
+        @back_in_uspace_Lhist = lhist(nsecs - @finished_wait, 0, 16000, 1000);
+        @back_in_uspace_Stats = stats(nsecs - @finished_wait);
+        @back_in_uspace = nsecs;
+        
+        //@total_hist = hist(nsecs - @start);
+        @total_Lhist = lhist(nsecs - @start, 0, 2000000,100000);
+        @total_stats = stats(nsecs - @start);
+    }
+    else{
+        //printf("failed to find all ops, we got to %d \n", @OpsPerformed);
+    }
+
+    @total_samples = @total_samples + 1;
+    //if(@total_samples == 20){
+    //    exit();
+    //}
+}
+
+kprobe:io_init_new_worker{
+    @times_called[tid] = count();
+}
