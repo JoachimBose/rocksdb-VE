@@ -4,6 +4,7 @@ import pprint
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
+import pprint as pprint
 
 PERCENTILE = 0.999
 
