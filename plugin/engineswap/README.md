@@ -2,59 +2,32 @@
 
 Engineswap is a storage backend for rocksdb which will be able to use io_uring and posix on a configurable parameter
 
-## Installing
-
-After installing the rocksdb and getting db_bench to run this is how one would install engineswap:
-
+Example compilation:
 ```bash
-cd rocksdb # in the current installation of rocksdb
-cd plugin/
-git clone https:www.github.com/JoachimBose/engineswap
-cd ../..
+#!/bin/bash
+export EXTRA_CXXFLAGS="-DGFLAGS=1 -lgflags -fomit-frame-pointer"
+export EXTRA_CFLAGS=-DGFLAGS=1
+export EXTRA_LDFLAGS="-lgflags"
+
+pushd /home/user/rocksdb-VE
+DISABLE_WARNING_AS_ERROR=1 DEBUG_LEVEL=0 ROCKSDB_PLUGINS="engineswap" make -j $(nproc) static_lib db_bench #--dry-run
+popd
 
 ```
-
-## Functions used by Fillseq,readrandom
-* NewDirectory
-* NewLogger
-* NewRandomAccessFile
-* NewSequentialFile
-* NewWritableFile
-* NumFileLinks
-* OptimizeForCompactionTableRead
-* OptimizeForCompactionTableWritea
-* OptimizeForLogWrite
-* OptimizeForManifestRead
-* OptimizeForManifestWrite
-* LockFile
-* GetAbsolutePath
-* GetChildren
-* GetFileSize
-* GetTestDirectory
-* FileExists
-* DeleteDir
-* DeleteFile
-* CreateDirIfMissing
-* RenameFile
-* SupportedOps
-* UnlockFile
-
-
-
-## DB_bench options to keep in mind
-See https://github.com/stonet-research/storage-systems-wiki-reading-list/wiki/RocksDB-notes
-for more info
-* -async_io default: false
-* -histogram show hist
-* -num number of kv pairs
-* -key_size
-* -value_size
-* -io_uring_enabled 
-* -keyrange_dist_X where x is a parameter
-* -perf_level
-* -report_file
-(If true, enable the use of IO uring if the platform supports it) type: bool default: true
-
-## Benchmarks:
-* fillseq
-* updaterandom
+Example execution:\
+```bash
+$ROCKSDB_PATH/db_bench --benchmarks=fillrandom --fs_uri=engineswap://$ENGINE \
+      --db=/local/nvmevirt/ \
+      --compression_type=none -histogram \
+      --disable_auto_compactions \
+      --max_background_compactions=0 \
+      -cache_size=0 \
+      --num=50000000
+```
+$Engine can be anyone of the following:
+ * io_uring - uses vectorised io
+ * io_uring_nv - uses non vectorised io
+ * posix
+ * libaio
+ * io_uring_nv_sqp - uses submission queue polling
+ * dummy - uses default filesystem, but prints out all the calls it receives.
